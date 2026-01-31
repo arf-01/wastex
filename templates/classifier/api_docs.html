@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Image Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        h3 {
+            color: #333;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .endpoint {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .method.get {
+            background: #28a745;
+        }
+        
+        .url {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            color: #333;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        pre code {
+            background: none;
+            color: #f8f8f2;
+            padding: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .response-example {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge.required {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge.optional {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .nav {
+            background: #667eea;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+        }
+        
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .success-response {
+            border-left: 4px solid #28a745;
+        }
+        
+        .error-response {
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="/">← Home</a>
+            <a href="/classifier/">Web Interface</a>
+            <a href="/api/docs/">API Docs</a>
+        </div>
+        
+        <h1>📡 API Documentation</h1>
+        <p class="subtitle">Image Classification API using Keras/TensorFlow Model</p>
+        
+        <h2>🚀 Quick Start</h2>
+        <p>Send a POST request with an image file to get classification predictions.</p>
+        
+        <pre><code>curl -X POST -F "image=@your_image.jpg" http://localhost:8000/api/predict/</code></pre>
+        
+        <h2>📍 Endpoints</h2>
+        
+        <!-- POST /api/predict/ -->
+        <div class="endpoint">
+            <h3>
+                <span class="method">POST</span>
+                <span class="url">/api/predict/</span>
+            </h3>
+            <p>Classify an image using the trained model.</p>
+            
+            <h4>Request Parameters</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>image</code></td>
+                        <td>File</td>
+                        <td><span class="badge required">Required</span></td>
+                        <td>Image file (jpg, jpeg, png, bmp, gif)</td>
+                    </tr>
+                    <tr>
+                        <td><code>top_k</code></td>
+                        <td>Integer</td>
+                        <td><span class="badge optional">Optional</span></td>
+                        <td>Number of top predictions to return (default: 5)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Example Requests</h4>
+            
+            <p><strong>cURL:</strong></p>
+            <pre><code>curl -X POST \
+  -F "image=@cat.jpg" \
+  http://localhost:8000/api/predict/</code></pre>
+            
+            <p><strong>cURL with top_k:</strong></p>
+            <pre><code>curl -X POST \
+  -F "image=@cat.jpg" \
+  -F "top_k=3" \
+  http://localhost:8000/api/predict/</code></pre>
+            
+            <p><strong>Python (requests):</strong></p>
+            <pre><code>import requests
+
+url = "http://localhost:8000/api/predict/"
+files = {'image': open('cat.jpg', 'rb')}
+
+response = requests.post(url, files=files)
+print(response.json())</code></pre>
+            
+            <p><strong>Python with top_k:</strong></p>
+            <pre><code>import requests
+
+url = "http://localhost:8000/api/predict/"
+files = {'image': open('cat.jpg', 'rb')}
+data = {'top_k': 3}
+
+response = requests.post(url, files=files, data=data)
+print(response.json())</code></pre>
+            
+            <p><strong>JavaScript (Fetch API):</strong></p>
+            <pre><code>const formData = new FormData();
+formData.append('image', fileInput.files[0]);
+
+fetch('http://localhost:8000/api/predict/', {
+    method: 'POST',
+    body: formData
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+            
+            <h4>Success Response (200 OK)</h4>
+            <div class="response-example success-response">
+                <pre><code>{
+  "success": true,
+  "predictions": [
+    {
+      "class": "cat",
+      "confidence": 0.9523,
+      "confidence_percent": "95.23%"
+    },
+    {
+      "class": "dog",
+      "confidence": 0.0321,
+      "confidence_percent": "3.21%"
+    },
+    {
+      "class": "bird",
+      "confidence": 0.0089,
+      "confidence_percent": "0.89%"
+    }
+  ],
+  "top_prediction": {
+    "class": "cat",
+    "confidence": 0.9523,
+    "confidence_percent": "95.23%"
+  }
+}</code></pre>
+            </div>
+            
+            <h4>Response Fields</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>success</code></td>
+                        <td>Boolean</td>
+                        <td>Whether the request was successful</td>
+                    </tr>
+                    <tr>
+                        <td><code>predictions</code></td>
+                        <td>Array</td>
+                        <td>List of predictions with class name and confidence</td>
+                    </tr>
+                    <tr>
+                        <td><code>predictions[].class</code></td>
+                        <td>String</td>
+                        <td>Predicted class name</td>
+                    </tr>
+                    <tr>
+                        <td><code>predictions[].confidence</code></td>
+                        <td>Float</td>
+                        <td>Confidence score (0-1)</td>
+                    </tr>
+                    <tr>
+                        <td><code>predictions[].confidence_percent</code></td>
+                        <td>String</td>
+                        <td>Confidence as percentage</td>
+                    </tr>
+                    <tr>
+                        <td><code>top_prediction</code></td>
+                        <td>Object</td>
+                        <td>The highest confidence prediction</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>Error Responses</h4>
+            
+            <p><strong>400 Bad Request - No Image</strong></p>
+            <div class="response-example error-response">
+                <pre><code>{
+  "error": "No image provided"
+}</code></pre>
+            </div>
+            
+            <p><strong>400 Bad Request - Invalid File Type</strong></p>
+            <div class="response-example error-response">
+                <pre><code>{
+  "error": "Invalid file type. Allowed: .jpg, .jpeg, .png, .bmp, .gif"
+}</code></pre>
+            </div>
+            
+            <p><strong>405 Method Not Allowed</strong></p>
+            <div class="response-example error-response">
+                <pre><code>{
+  "error": "POST method required"
+}</code></pre>
+            </div>
+            
+            <p><strong>500 Internal Server Error</strong></p>
+            <div class="response-example error-response">
+                <pre><code>{
+  "error": "Error message details"
+}</code></pre>
+            </div>
+        </div>
+        
+        <!-- GET /api/docs/ -->
+        <div class="endpoint">
+            <h3>
+                <span class="method get">GET</span>
+                <span class="url">/api/docs/</span>
+            </h3>
+            <p>View this API documentation page.</p>
+        </div>
+        
+        <h2>📝 Notes</h2>
+        
+        <div class="note">
+            <p><strong>CSRF Protection:</strong> The <code>/api/predict/</code> endpoint is CSRF-exempt for easy API access. For production, implement proper authentication.</p>
+        </div>
+        
+        <div class="note">
+            <p><strong>File Size:</strong> Maximum file size depends on your Django settings. Default is typically 2.5 MB.</p>
+        </div>
+        
+        <div class="note">
+            <p><strong>Image Formats:</strong> Supported formats: JPG, JPEG, PNG, BMP, GIF. Images are automatically resized to match model input dimensions.</p>
+        </div>
+        
+        <h2>🔧 Technical Details</h2>
+        
+        <h3>Model Information</h3>
+        <ul>
+            <li><strong>Format:</strong> Keras (.keras)</li>
+            <li><strong>Framework:</strong> TensorFlow</li>
+            <li><strong>Input Processing:</strong> Automatic resize and normalization</li>
+            <li><strong>Output:</strong> Softmax probabilities</li>
+        </ul>
+        
+        <h3>Rate Limits</h3>
+        <p>Currently no rate limiting is implemented. For production use, consider adding rate limiting middleware.</p>
+        
+        <h3>CORS</h3>
+        <p>CORS is not configured by default. To enable cross-origin requests, add <code>django-cors-headers</code> to your project.</p>
+        
+        <h2>💡 Examples by Language</h2>
+        
+        <h3>PowerShell</h3>
+        <pre><code>$uri = "http://localhost:8000/api/predict/"
+$filePath = "C:\path\to\image.jpg"
+$form = @{
+    image = Get-Item -Path $filePath
+}
+Invoke-RestMethod -Uri $uri -Method Post -Form $form</code></pre>
+        
+        <h3>Node.js</h3>
+        <pre><code>const FormData = require('form-data');
+const fs = require('fs');
+const axios = require('axios');
+
+const form = new FormData();
+form.append('image', fs.createReadStream('image.jpg'));
+
+axios.post('http://localhost:8000/api/predict/', form, {
+    headers: form.getHeaders()
+})
+.then(response => console.log(response.data))
+.catch(error => console.error(error));</code></pre>
+        
+        <h3>PHP</h3>
+        <pre><code>&lt;?php
+$url = 'http://localhost:8000/api/predict/';
+$file = new CURLFile('image.jpg');
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, ['image' => $file]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+echo $response;
+?&gt;</code></pre>
+        
+        <h2>🆘 Support</h2>
+        <p>For issues or questions:</p>
+        <ul>
+            <li>Check the <a href="/classifier/">web interface</a> to verify the model is working</li>
+            <li>Ensure your image file is in a supported format</li>
+            <li>Check server logs for detailed error messages</li>
+        </ul>
+    </div>
+</body>
+</html>

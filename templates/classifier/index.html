@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+        
+        .upload-area.dragover {
+            background: #e6e9ff;
+            transform: scale(1.02);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .preview {
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        .preview.show {
+            display: block;
+        }
+        
+        .preview img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .prediction {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .prediction:first-child {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .prediction .class {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .prediction .confidence {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 5px;
+        }
+        
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .info-box code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Image Classifier</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>Drag and drop an image here or click to browse</p>
+            <input type="file" id="fileInput" accept="image/*">
+            <br><br>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                Choose Image
+            </button>
+        </div>
+        
+        <div class="preview" id="preview">
+            <img id="previewImg" alt="Preview">
+            <br><br>
+            <button class="btn" id="classifyBtn">Classify Image</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="results" id="results">
+            <h2>Predictions:</h2>
+            <div id="predictionsList"></div>
+        </div>
+        
+        <div class="info-box">
+            <h3>Quick Links</h3>
+            <p>
+                <a href="/classifier/dashboard/" style="color: #667eea; text-decoration: none; font-weight: bold;">📊 View Dashboard</a> | 
+                <a href="/classifier/api/docs/" style="color: #667eea; text-decoration: none; font-weight: bold;">📖 API Documentation</a>
+            </p>
+        </div>
+        
+        <div class="info-box">
+            <h3>API Endpoint</h3>
+            <p><strong>POST</strong> <code>/api/predict/</code></p>
+            <p>Example:</p>
+            <code>curl -X POST -F "image=@image.jpg" http://localhost:8000/api/predict/</code>
+        </div>
+    </div>
+    
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const preview = document.getElementById('preview');
+        const previewImg = document.getElementById('previewImg');
+        const classifyBtn = document.getElementById('classifyBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const predictionsList = document.getElementById('predictionsList');
+        
+        let selectedFile = null;
+        
+        // File selection
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    preview.classList.add('show');
+                    results.classList.remove('show');
+                    error.classList.remove('show');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        });
+        
+        // Classify
+        classifyBtn.addEventListener('click', async function() {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            
+            loading.classList.add('show');
+            results.classList.remove('show');
+            error.classList.remove('show');
+            
+            try {
+                const response = await fetch('/classifier/classify/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data.predictions);
+                } else {
+                    showError(data.error || 'Classification failed');
+                }
+            } catch (err) {
+                showError('Error: ' + err.message);
+            } finally {
+                loading.classList.remove('show');
+            }
+        });
+        
+        function displayResults(predictions) {
+            predictionsList.innerHTML = '';
+            predictions.forEach((pred, index) => {
+                const div = document.createElement('div');
+                div.className = 'prediction';
+                div.innerHTML = `
+                    <span class="class">${index + 1}. ${pred.class}</span>
+                    <span class="confidence">${pred.confidence_percent}</span>
+                `;
+                predictionsList.appendChild(div);
+            });
+            results.classList.add('show');
+        }
+        
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('show');
+        }
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
