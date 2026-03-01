@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WasteX — Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 span { color: #666; font-weight: 400; }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #999;
+        }
+        .status-dot {
+            width: 7px; height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+        }
+
+        /* ── Container ── */
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn-primary {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #1a1a1a;
+        }
+        .btn-primary:hover { background: #333; }
+        .btn-ghost {
+            background: transparent;
+            border-color: transparent;
+            color: #999;
+            padding: 6px 12px;
+        }
+        .btn-ghost:hover { color: #333; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+        /* ── Upload CTA ── */
+        .upload-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .upload-cta-text h2 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .upload-cta-text p {
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* ── Filter Bar ── */
+        .filter-bar {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .filter-bar label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .filter-bar input[type="datetime-local"] {
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #333;
+            background: #fafafa;
+        }
+        .filter-bar input:focus {
+            outline: none;
+            border-color: #1a1a1a;
+            background: #fff;
+        }
+        .filter-sep {
+            width: 1px;
+            height: 24px;
+            background: #e0e0e0;
+        }
+
+        /* ── Summary Cards ── */
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .summary-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 18px 20px;
+        }
+        .summary-card .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .summary-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1;
+        }
+        .summary-card .sub {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 4px;
+        }
+        .summary-card .value.text-val {
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        /* ── Panels ── */
+        .panel {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-header h2 {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+        }
+        .badge {
+            background: #f0f0f0;
+            color: #666;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* ── Count Table ── */
+        .count-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .count-table th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            padding: 10px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+        }
+        .count-table td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+        .count-table tr:last-child td { border-bottom: none; }
+        .count-table tr:hover { background: #fafafa; }
+        .count-bar-cell { width: 40%; }
+        .count-bar-wrap {
+            background: #f0f0f0;
+            border-radius: 3px;
+            height: 16px;
+            overflow: hidden;
+        }
+        .count-bar {
+            height: 100%;
+            background: #1a1a1a;
+            border-radius: 3px;
+            min-width: 2px;
+            transition: width 0.4s ease;
+        }
+        .count-val {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            text-align: right;
+        }
+        .class-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .class-dot {
+            width: 8px; height: 8px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        /* ── OOD List ── */
+        .ood-list {
+            max-height: 480px;
+            overflow-y: auto;
+        }
+        .ood-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .ood-item:hover { background: #fafafa; }
+        .ood-item:last-child { border-bottom: none; }
+        .ood-thumb {
+            width: 44px; height: 44px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #f0f0f0;
+            flex-shrink: 0;
+            border: 1px solid #eee;
+        }
+        .ood-info { flex: 1; min-width: 0; }
+        .ood-filename {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ood-meta {
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 2px;
+        }
+        .ood-energy {
+            font-size: 12px;
+            font-weight: 600;
+            color: #dc2626;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .empty-state {
+            padding: 48px 20px;
+            text-align: center;
+            color: #ccc;
+            font-size: 13px;
+        }
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        /* ── Pagination ── */
+        .pagination {
+            padding: 10px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+        }
+        .pagination-btns { display: flex; gap: 4px; }
+        .pagination-btns button {
+            padding: 4px 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .pagination-btns button:hover { background: #f0f0f0; }
+        .pagination-btns button:disabled {
+            opacity: 0.3;
+            cursor: default;
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 8px;
+            width: 560px;
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .modal-img {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            background: #f5f5f5;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #888; }
+        .detail-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .tag-ood { background: #fee2e2; color: #991b1b; }
+        .tag-id { background: #dcfce7; color: #166534; }
+
+        /* ── Logits ── */
+        .logits-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .logits-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .logit-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        .logit-name {
+            width: 110px;
+            color: #666;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+        .logit-bar-wrap {
+            flex: 1;
+            background: #f0f0f0;
+            border-radius: 3px;
+            height: 12px;
+            overflow: hidden;
+        }
+        .logit-bar {
+            height: 100%;
+            border-radius: 3px;
+            background: #1a1a1a;
+            transition: width 0.3s ease;
+        }
+        .logit-bar.negative { background: #dc2626; }
+        .logit-val {
+            width: 65px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+            font-size: 12px;
+            color: #555;
+        }
+
+        /* ── Two column grid ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* ── Loading ── */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #ccc;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .summary { grid-template-columns: repeat(2, 1fr); }
+            .grid-2 { grid-template-columns: 1fr; }
+            .container { padding: 0 16px; margin: 24px auto; }
+            .header { padding: 12px 16px; }
+            .upload-cta { flex-direction: column; gap: 12px; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WasteX <span>Dashboard</span></h1>
+        <div class="header-right">
+            <a href="{% url 'dataset' %}" style="font-size:13px;color:#666;text-decoration:none;margin-right:12px;">Dataset</a>
+            <a href="{% url 'training' %}" style="font-size:13px;color:#666;text-decoration:none;margin-right:12px;">Training</a>
+            <a href="{% url 'inspect' %}" style="font-size:13px;color:#666;text-decoration:none;margin-right:12px;">Inspect OOD</a>
+            <div class="header-status">
+                <div class="status-dot"></div>
+                <span id="lastUpdated"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Upload CTA -->
+        <div class="upload-cta">
+            <div class="upload-cta-text">
+                <h2>Classify an Image</h2>
+                <p>Upload a waste image to classify it or detect out-of-distribution samples</p>
+            </div>
+            <a href="{% url 'upload' %}" class="btn btn-primary">
+                Upload &amp; Classify
+            </a>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <label>From</label>
+            <input type="datetime-local" id="filterFrom">
+            <label>To</label>
+            <input type="datetime-local" id="filterTo">
+            <div class="filter-sep"></div>
+            <button class="btn btn-sm btn-primary" onclick="applyFilters()">Query</button>
+            <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary">
+            <div class="summary-card">
+                <div class="label">Total Classified</div>
+                <div class="value" id="totalCount">-</div>
+                <div class="sub">in-distribution</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">OOD Detected</div>
+                <div class="value" id="oodCount">-</div>
+                <div class="sub">out-of-distribution</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Classes Active</div>
+                <div class="value" id="activeClasses">-</div>
+                <div class="sub">of {{ class_names|length }}</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">Top Class</div>
+                <div class="value text-val" id="topClass">-</div>
+                <div class="sub" id="topClassCount"></div>
+            </div>
+        </div>
+
+        <!-- Two Panels -->
+        <div class="grid-2">
+            <!-- Classification Counts -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Classification Counts</h2>
+                    <span class="badge" id="countBadge">0</span>
+                </div>
+                <div>
+                    <table class="count-table">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Count</th>
+                                <th class="count-bar-cell">Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody id="countTableBody">
+                            <tr><td colspan="3" class="loading">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- OOD Detections -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>OOD Detections</h2>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="badge" id="oodBadge">0</span>
+                        <a href="{% url 'inspect' %}" class="btn btn-sm" style="text-decoration:none;">Inspect</a>
+                    </div>
+                </div>
+                <div>
+                    <div class="ood-list" id="oodList">
+                        <div class="loading">Loading…</div>
+                    </div>
+                    <div class="pagination" id="oodPagination" style="display:none;">
+                        <span id="oodPageInfo"></span>
+                        <div class="pagination-btns">
+                            <button id="oodPrev" onclick="loadOOD(currentOodPage-1)">Prev</button>
+                            <button id="oodNext" onclick="loadOOD(currentOodPage+1)">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OOD Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">Image Detail</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
+        var CLASS_COLORS = [
+            '#1a1a1a', '#3b82f6', '#22c55e', '#ef4444',
+            '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'
+        ];
+        var currentOodPage = 1;
+        var oodDataCache = [];
+
+        function getFilterParams() {
+            var from = document.getElementById('filterFrom').value;
+            var to = document.getElementById('filterTo').value;
+            var params = '';
+            if (from) params += '&from=' + encodeURIComponent(from);
+            if (to) params += '&to=' + encodeURIComponent(to);
+            return params;
+        }
+
+        /* ── Load Trash Counts ── */
+        function loadCounts() {
+            var params = getFilterParams();
+            fetch('/classifier/api/counts/?_=' + Date.now() + params)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var counts = data.counts;
+                    var total = data.total;
+                    var values = [];
+                    for (var k in counts) { values.push(counts[k]); }
+                    var maxCount = Math.max.apply(null, values.concat([1]));
+                    var active = values.filter(function(v) { return v > 0; }).length;
+
+                    document.getElementById('totalCount').textContent = total;
+                    document.getElementById('activeClasses').textContent = active;
+                    document.getElementById('countBadge').textContent = total;
+
+                    // Top class
+                    var topName = '-';
+                    var topVal = 0;
+                    for (var key in counts) {
+                        if (counts[key] > topVal) {
+                            topName = key;
+                            topVal = counts[key];
+                        }
+                    }
+                    document.getElementById('topClass').textContent = topVal > 0 ? topName : '-';
+                    document.getElementById('topClassCount').textContent = topVal > 0 ? topVal + ' items' : '';
+
+                    // Build sorted entries
+                    var entries = [];
+                    for (var c in counts) { entries.push([c, counts[c]]); }
+                    entries.sort(function(a, b) { return b[1] - a[1]; });
+
+                    var tbody = document.getElementById('countTableBody');
+                    if (total === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="empty-state-icon">📊</div>No classifications yet</div></td></tr>';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < entries.length; i++) {
+                        var name = entries[i][0];
+                        var count = entries[i][1];
+                        var color = CLASS_COLORS[i % CLASS_COLORS.length];
+                        var pct = (count / maxCount * 100).toFixed(1);
+                        html += '<tr>' +
+                            '<td><div class="class-name"><div class="class-dot" style="background:' + color + '"></div>' + name + '</div></td>' +
+                            '<td class="count-val">' + count + '</td>' +
+                            '<td class="count-bar-cell"><div class="count-bar-wrap"><div class="count-bar" style="width:' + pct + '%;background:' + color + '"></div></div></td>' +
+                            '</tr>';
+                    }
+                    tbody.innerHTML = html;
+                })
+                .catch(function(e) {
+                    console.error('loadCounts error:', e);
+                    document.getElementById('countTableBody').innerHTML =
+                        '<tr><td colspan="3" class="empty-state">Failed to load data</td></tr>';
+                });
+        }
+
+        /* ── Load OOD Images ── */
+        function loadOOD(page) {
+            page = page || 1;
+            currentOodPage = page;
+            var params = getFilterParams();
+            fetch('/classifier/api/ood/?page=' + page + '&per_page=15&_=' + Date.now() + params)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    document.getElementById('oodCount').textContent = data.total;
+                    document.getElementById('oodBadge').textContent = data.total;
+                    if (data.unreviewed !== undefined && data.unreviewed > 0) {
+                        document.getElementById('oodBadge').textContent = data.unreviewed + ' pending';
+                    }
+
+                    oodDataCache = data.images;
+
+                    var list = document.getElementById('oodList');
+
+                    if (data.images.length === 0) {
+                        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div>No OOD images detected</div>';
+                        document.getElementById('oodPagination').style.display = 'none';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < data.images.length; i++) {
+                        var img = data.images[i];
+                        var dateStr = new Date(img.uploaded_at).toLocaleString();
+                        var energyStr = img.energy !== null ? img.energy.toFixed(3) : '-';
+                        var reviewedTag = img.reviewed
+                            ? '<span style="font-size:10px;color:#22c55e;font-weight:600;">✓ Reviewed</span>'
+                            : '<span style="font-size:10px;color:#f59e0b;font-weight:600;">● Pending</span>';
+                        html += '<div class="ood-item" data-idx="' + i + '" onclick="showOODByIndex(' + i + ')">' +
+                            '<img class="ood-thumb" src="' + (img.image_url || '') + '" onerror="this.style.display=\'none\'" alt="">' +
+                            '<div class="ood-info">' +
+                                '<div class="ood-filename">' + img.filename + '</div>' +
+                                '<div class="ood-meta">' + dateStr + ' · ' + reviewedTag + '</div>' +
+                            '</div>' +
+                            '<div class="ood-energy">' + energyStr + '</div>' +
+                        '</div>';
+                    }
+                    list.innerHTML = html;
+
+                    // Pagination
+                    var pag = document.getElementById('oodPagination');
+                    if (data.pages > 1) {
+                        pag.style.display = 'flex';
+                        document.getElementById('oodPageInfo').textContent =
+                            'Page ' + data.page + ' of ' + data.pages + ' · ' + data.total + ' items';
+                        document.getElementById('oodPrev').disabled = data.page <= 1;
+                        document.getElementById('oodNext').disabled = data.page >= data.pages;
+                    } else {
+                        pag.style.display = 'none';
+                    }
+                })
+                .catch(function(e) {
+                    console.error('loadOOD error:', e);
+                    document.getElementById('oodList').innerHTML =
+                        '<div class="empty-state">Failed to load OOD data</div>';
+                });
+        }
+
+        /* ── Show OOD Detail by index (avoids JSON escaping issues) ── */
+        function showOODByIndex(idx) {
+            var img = oodDataCache[idx];
+            if (!img) return;
+
+            document.getElementById('modalTitle').textContent = img.filename;
+
+            var logitsHtml = '<div style="color:#ccc;font-size:13px">No logits available</div>';
+            if (img.logits && img.logits.length) {
+                var maxAbs = 1;
+                for (var j = 0; j < img.logits.length; j++) {
+                    var a = Math.abs(img.logits[j]);
+                    if (a > maxAbs) maxAbs = a;
+                }
+                logitsHtml = '';
+                for (var j = 0; j < img.logits.length; j++) {
+                    var v = img.logits[j];
+                    var pct = (Math.abs(v) / maxAbs * 100).toFixed(1);
+                    var cls = v < 0 ? ' negative' : '';
+                    logitsHtml += '<div class="logit-row">' +
+                        '<span class="logit-name">' + (CLASS_NAMES[j] || 'Class ' + j) + '</span>' +
+                        '<div class="logit-bar-wrap"><div class="logit-bar' + cls + '" style="width:' + pct + '%"></div></div>' +
+                        '<span class="logit-val">' + v.toFixed(4) + '</span>' +
+                    '</div>';
+                }
+            }
+
+            var bodyHtml = '';
+            if (img.image_url) {
+                bodyHtml += '<img class="modal-img" src="' + img.image_url + '" alt="">';
+            }
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="tag tag-ood">OOD</span></span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Energy Score</span><span class="detail-value" style="color:#dc2626">' + (img.energy !== null ? img.energy.toFixed(6) : '-') + '</span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Dimensions</span><span class="detail-value">' + (img.width || '-') + ' × ' + (img.height || '-') + '</span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Uploaded</span><span class="detail-value">' + new Date(img.uploaded_at).toLocaleString() + '</span></div>';
+            bodyHtml += '<div class="logits-section"><div class="logits-title">Logits</div>' + logitsHtml + '</div>';
+
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (!e || e.target === document.getElementById('modalOverlay')) {
+                document.getElementById('modalOverlay').classList.remove('active');
+            }
+        }
+
+        /* ── Filters ── */
+        function applyFilters() {
+            loadCounts();
+            loadOOD(1);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterFrom').value = '';
+            document.getElementById('filterTo').value = '';
+            applyFilters();
+        }
+
+        /* ── Init ── */
+        function init() {
+            loadCounts();
+            loadOOD(1);
+            document.getElementById('lastUpdated').textContent =
+                'Updated ' + new Date().toLocaleTimeString();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        init();
+        setInterval(init, 30000);
+    </script>
+</body>
+</html>

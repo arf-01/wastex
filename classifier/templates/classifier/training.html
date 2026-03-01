@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WasteX — Training</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 span { color: #666; font-weight: 400; }
+        .header-links { display: flex; gap: 16px; align-items: center; }
+        .header a { font-size: 13px; color: #666; text-decoration: none; }
+        .header a:hover { color: #1a1a1a; }
+
+        /* ── Container ── */
+        .container { max-width: 1100px; margin: 40px auto; padding: 0 24px; }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px; border: 1px solid #d0d0d0; border-radius: 6px;
+            background: #fff; font-size: 14px; font-family: inherit;
+            cursor: pointer; color: #333; transition: all 0.15s; text-decoration: none;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+        .btn-primary:hover { background: #333; }
+        .btn-success { background: #16a34a; color: #fff; border-color: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Two Column Layout ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* ── Panel ── */
+        .panel {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-header h2 {
+            font-size: 13px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; color: #555;
+        }
+        .panel-body { padding: 20px; }
+
+        /* ── Form ── */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: #888; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .form-input, .form-select {
+            width: 100%; padding: 10px 12px;
+            border: 1px solid #d0d0d0; border-radius: 6px;
+            font-size: 14px; font-family: inherit; background: #fff;
+        }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #1a1a1a; }
+        .form-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+        .form-row {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+
+        /* ── Collapsible Advanced ── */
+        .advanced-toggle {
+            background: none; border: none; cursor: pointer;
+            font-size: 12px; color: #888; font-family: inherit;
+            display: flex; align-items: center; gap: 4px;
+            padding: 0; margin-bottom: 16px;
+        }
+        .advanced-toggle:hover { color: #333; }
+        .advanced-toggle .arrow { transition: transform 0.2s; }
+        .advanced-toggle.open .arrow { transform: rotate(90deg); }
+        .advanced-section { display: none; }
+        .advanced-section.open { display: block; }
+
+        /* ── Live Status Banner ── */
+        .status-banner {
+            border-radius: 8px; padding: 20px 24px;
+            margin-bottom: 24px; display: none;
+        }
+        .status-banner.active { display: block; }
+        .status-banner.running {
+            background: #eff6ff; border: 1px solid #93c5fd;
+        }
+        .status-banner.completed {
+            background: #f0fdf4; border: 1px solid #86efac;
+        }
+        .status-banner.failed {
+            background: #fef2f2; border: 1px solid #fca5a5;
+        }
+        .status-banner-top {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .status-banner h3 { font-size: 14px; font-weight: 600; }
+        .status-run-name { font-size: 12px; color: #666; }
+
+        /* ── Progress Bar ── */
+        .progress-wrap {
+            background: #e0e0e0; border-radius: 4px; height: 8px;
+            overflow: hidden; margin-bottom: 8px;
+        }
+        .progress-bar {
+            height: 100%; background: #3b82f6; border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .progress-bar.done { background: #22c55e; }
+        .progress-bar.error { background: #dc2626; }
+        .status-detail {
+            display: flex; gap: 20px; font-size: 12px; color: #666;
+        }
+        .status-detail strong { color: #1a1a1a; }
+
+        /* ── Spinner ── */
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid #93c5fd; border-top-color: #3b82f6;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Tags ── */
+        .tag {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+        }
+        .tag-pending { background: #f5f5f5; color: #888; }
+        .tag-running, .tag-training, .tag-evaluating { background: #dbeafe; color: #1e40af; }
+        .tag-completed { background: #dcfce7; color: #166534; }
+        .tag-failed { background: #fee2e2; color: #991b1b; }
+        .tag-active { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+        /* ── History Table ── */
+        .history-table {
+            width: 100%; border-collapse: collapse;
+        }
+        .history-table th {
+            text-align: left; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: #999; padding: 10px 16px;
+            border-bottom: 1px solid #e0e0e0; font-weight: 500;
+        }
+        .history-table td {
+            padding: 12px 16px; border-bottom: 1px solid #f5f5f5;
+            font-size: 13px; vertical-align: middle;
+        }
+        .history-table tr:last-child td { border-bottom: none; }
+        .history-table tr:hover { background: #fafafa; }
+        .history-table .run-name {
+            font-weight: 600; font-size: 12px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+        }
+        .history-table .metric {
+            font-variant-numeric: tabular-nums; font-weight: 600;
+        }
+        .history-table .actions { white-space: nowrap; }
+
+        /* ── Empty State ── */
+        .empty-state {
+            padding: 48px 20px; text-align: center;
+            color: #ccc; font-size: 13px;
+        }
+        .empty-state-icon { font-size: 32px; margin-bottom: 8px; }
+
+        /* ── Detail Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
+            z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff; border-radius: 8px; width: 640px;
+            max-width: 90vw; max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-header {
+            padding: 16px 20px; border-bottom: 1px solid #e0e0e0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header h3 { font-size: 14px; font-weight: 600; }
+        .modal-close {
+            background: none; border: none; font-size: 20px;
+            cursor: pointer; color: #999; padding: 4px 8px; line-height: 1;
+        }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #888; }
+        .detail-value { font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+
+        .detail-section-title {
+            font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #888; margin: 16px 0 8px; padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: #1a1a1a; color: #fff; padding: 12px 20px;
+            border-radius: 8px; font-size: 13px; z-index: 200;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            transform: translateY(80px); opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { background: #dc2626; }
+        .toast.success { background: #16a34a; }
+
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .container { padding: 0 16px; margin: 24px auto; }
+            .header { padding: 12px 16px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WasteX <span>Training</span></h1>
+        <div class="header-links">
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+            <a href="{% url 'dataset' %}">Dataset</a>
+            <a href="{% url 'inspect' %}">Inspect OOD</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Live Status Banner (appears when training is running) -->
+        <div class="status-banner" id="statusBanner">
+            <div class="status-banner-top">
+                <h3 id="statusTitle">
+                    <span class="spinner" id="statusSpinner"></span>
+                    Training in Progress
+                </h3>
+                <span class="status-run-name" id="statusRunName"></span>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-bar" id="progressBar" style="width:0%"></div>
+            </div>
+            <div class="status-detail">
+                <span>Status: <strong id="statusPhase">—</strong></span>
+                <span>Epochs: <strong id="statusEpochs">0</strong></span>
+                <span>Dataset: <strong id="statusDataset">—</strong></span>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <!-- ── Left Column: Start Training Form ── -->
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Start Training Run</h2>
+                    </div>
+                    <div class="panel-body">
+                        <form id="trainingForm" onsubmit="startTraining(event)">
+                            <div class="form-group">
+                                <label class="form-label">Dataset Version</label>
+                                <select class="form-select" id="cfgDatasetVersion">
+                                    <option value="">Use active version</option>
+                                </select>
+                                <div class="form-hint">Which dataset version to train on</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Base Model</label>
+                                <select class="form-select" id="cfgBaseModel">
+                                    <option value="">Current active model (fine-tune)</option>
+                                    <option value="scratch">Fresh from ImageNet weights</option>
+                                </select>
+                                <div class="form-hint">Start from existing model or train from scratch</div>
+                            </div>
+
+                            <!-- Advanced Settings (collapsed by default) -->
+                            <button type="button" class="advanced-toggle" id="advToggle" onclick="toggleAdvanced()">
+                                <span class="arrow">▶</span> Advanced Settings
+                            </button>
+                            <div class="advanced-section" id="advSection">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Epochs</label>
+                                        <input class="form-input" type="number" id="cfgEpochs" value="40" min="1" max="200">
+                                        <div class="form-hint">Max epochs per stage</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Batch Size</label>
+                                        <input class="form-input" type="number" id="cfgBatchSize" value="8" min="1" max="64">
+                                        <div class="form-hint">Images per batch</div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">LR (FC Head)</label>
+                                        <input class="form-input" type="number" id="cfgLrFc" value="0.0001" step="0.00001" min="0">
+                                        <div class="form-hint">Stage 1 learning rate</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">LR (Fine-tune)</label>
+                                        <input class="form-input" type="number" id="cfgLrFt" value="0.00001" step="0.000001" min="0">
+                                        <div class="form-hint">Stage 2 learning rate</div>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Unfreeze Layers</label>
+                                        <input class="form-input" type="number" id="cfgUnfreezeLayers" value="60" min="0" max="311">
+                                        <div class="form-hint">Base layers to unfreeze in stage 2</div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Early Stop Patience</label>
+                                        <input class="form-input" type="number" id="cfgPatience" value="8" min="1" max="50">
+                                        <div class="form-hint">Epochs without improvement</div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+                                        <input type="checkbox" id="cfgAutoPromote">
+                                        Auto-promote if metrics improve
+                                    </label>
+                                    <div class="form-hint">Automatically set as active model if it beats the current one</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Notes (optional)</label>
+                                <input class="form-input" type="text" id="cfgNotes" placeholder="e.g. Added 50 new glass images">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" id="startBtn" style="width:100%;">
+                                ▶ Start Training
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Active Model Info -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Active Model</h2>
+                        <span class="tag tag-active" id="activeTag" style="display:none;">★ ACTIVE</span>
+                    </div>
+                    <div class="panel-body" id="activeModelInfo">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🤖</div>
+                            Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Right Column: Training History ── -->
+            <div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Training History</h2>
+                        <span class="tag" id="historyCount" style="background:#f0f0f0;color:#666;">0</span>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Run</th>
+                                    <th>Status</th>
+                                    <th>Accuracy</th>
+                                    <th>F1</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">📋</div>Loading...</div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Run Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">Run Details</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
+        var historyCache = [];
+        var pollTimer = null;
+        var isTraining = false;
+
+        /* ─────────────────────────────────────────────
+           Toast Notifications
+        ───────────────────────────────────────────── */
+        function showToast(msg, type) {
+            var t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + (type || '') + ' show';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(function() {
+                t.classList.remove('show');
+            }, 4000);
+        }
+
+        /* ─────────────────────────────────────────────
+           Advanced Toggle
+        ───────────────────────────────────────────── */
+        function toggleAdvanced() {
+            var btn = document.getElementById('advToggle');
+            var sec = document.getElementById('advSection');
+            btn.classList.toggle('open');
+            sec.classList.toggle('open');
+        }
+
+        /* ─────────────────────────────────────────────
+           Load Dataset Versions (for dropdown)
+        ───────────────────────────────────────────── */
+        function loadVersions() {
+            fetch('/classifier/api/dataset/versions/?_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var sel = document.getElementById('cfgDatasetVersion');
+                    // Keep the first default option
+                    sel.innerHTML = '<option value="">Use active version</option>';
+                    var versions = data.versions || [];
+                    for (var i = 0; i < versions.length; i++) {
+                        var v = versions[i];
+                        var label = v.name;
+                        if (v.is_active) label += ' (active)';
+                        label += ' — ' + (v.total_images || 0) + ' images';
+                        var opt = document.createElement('option');
+                        opt.value = v.name;
+                        opt.textContent = label;
+                        sel.appendChild(opt);
+                    }
+                })
+                .catch(function(e) {
+                    console.error('loadVersions error:', e);
+                });
+        }
+
+        /* ─────────────────────────────────────────────
+           Start Training
+        ───────────────────────────────────────────── */
+        function startTraining(e) {
+            e.preventDefault();
+
+            var btn = document.getElementById('startBtn');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = 'Starting…';
+
+            var body = {};
+
+            var dsv = document.getElementById('cfgDatasetVersion').value;
+            if (dsv) body.dataset_version = dsv;
+
+            var bm = document.getElementById('cfgBaseModel').value;
+            if (bm) body.base_model = bm;
+
+            body.epochs = parseInt(document.getElementById('cfgEpochs').value) || 40;
+            body.batch_size = parseInt(document.getElementById('cfgBatchSize').value) || 8;
+            body.learning_rate_fc = parseFloat(document.getElementById('cfgLrFc').value) || 0.0001;
+            body.learning_rate_ft = parseFloat(document.getElementById('cfgLrFt').value) || 0.00001;
+            body.unfreeze_layers = parseInt(document.getElementById('cfgUnfreezeLayers').value) || 60;
+            body.early_stopping_patience = parseInt(document.getElementById('cfgPatience').value) || 8;
+            body.auto_promote = document.getElementById('cfgAutoPromote').checked;
+            body.notes = document.getElementById('cfgNotes').value || '';
+
+            fetch('/classifier/api/training/start/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; }); })
+            .then(function(res) {
+                btn.disabled = false;
+                btn.textContent = '▶ Start Training';
+                if (!res.ok) {
+                    showToast(res.data.error || 'Failed to start training', 'error');
+                    return;
+                }
+                showToast('Training started: ' + (res.data.dataset_version || ''), 'success');
+                startPolling();
+                loadHistory();
+            })
+            .catch(function(e) {
+                btn.disabled = false;
+                btn.textContent = '▶ Start Training';
+                showToast('Network error: ' + e.message, 'error');
+            });
+        }
+
+        /* ─────────────────────────────────────────────
+           Poll Training Status
+        ───────────────────────────────────────────── */
+        function pollStatus() {
+            fetch('/classifier/api/training/status/?_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var banner = document.getElementById('statusBanner');
+                    var btnStart = document.getElementById('startBtn');
+
+                    if (data.training_running) {
+                        isTraining = true;
+                        btnStart.disabled = true;
+                        btnStart.textContent = 'Training in Progress…';
+                    } else {
+                        if (isTraining) {
+                            // Was training, now stopped — refresh history
+                            loadHistory();
+                        }
+                        isTraining = false;
+                        btnStart.disabled = false;
+                        btnStart.textContent = '▶ Start Training';
+                    }
+
+                    if (!data.run) {
+                        banner.className = 'status-banner';
+                        return;
+                    }
+
+                    var run = data.run;
+                    var isActive = ['pending', 'running', 'training', 'evaluating'].indexOf(run.status) >= 0;
+
+                    if (isActive) {
+                        banner.className = 'status-banner active running';
+                        document.getElementById('statusSpinner').style.display = 'inline-block';
+                        document.getElementById('statusTitle').innerHTML =
+                            '<span class="spinner"></span> Training in Progress';
+
+                        var statusMap = {
+                            'pending': 'Initializing…',
+                            'running': 'Loading data…',
+                            'training': 'Training model…',
+                            'evaluating': 'Evaluating model…'
+                        };
+                        document.getElementById('statusPhase').textContent = statusMap[run.status] || run.status;
+                        document.getElementById('statusEpochs').textContent = run.epochs_completed || '0';
+                        document.getElementById('statusDataset').textContent = run.dataset_version_name || '—';
+                        document.getElementById('statusRunName').textContent = run.run_name;
+
+                        // Progress bar: rough estimate
+                        var maxEpochs = (run.config && run.config.epochs) ? run.config.epochs * 2 : 80;
+                        var pct = Math.min(95, Math.round((run.epochs_completed / maxEpochs) * 100));
+                        if (run.status === 'evaluating') pct = 90;
+                        document.getElementById('progressBar').style.width = pct + '%';
+                        document.getElementById('progressBar').className = 'progress-bar';
+
+                    } else if (run.status === 'completed' && data.training_running === false) {
+                        banner.className = 'status-banner active completed';
+                        document.getElementById('statusTitle').innerHTML = '✓ Training Complete';
+                        document.getElementById('statusRunName').textContent = run.run_name;
+                        document.getElementById('statusPhase').textContent = 'Completed';
+                        document.getElementById('statusEpochs').textContent = run.epochs_completed || '0';
+                        document.getElementById('statusDataset').textContent = run.dataset_version_name || '—';
+                        document.getElementById('progressBar').style.width = '100%';
+                        document.getElementById('progressBar').className = 'progress-bar done';
+
+                        // Show accuracy in status detail
+                        if (run.test_accuracy) {
+                            document.getElementById('statusPhase').textContent =
+                                'Accuracy: ' + (run.test_accuracy * 100).toFixed(2) + '%';
+                        }
+
+                    } else if (run.status === 'failed') {
+                        banner.className = 'status-banner active failed';
+                        document.getElementById('statusTitle').innerHTML = '✗ Training Failed';
+                        document.getElementById('statusRunName').textContent = run.run_name;
+                        document.getElementById('statusPhase').textContent = run.error_message || 'Unknown error';
+                        document.getElementById('statusEpochs').textContent = run.epochs_completed || '0';
+                        document.getElementById('statusDataset').textContent = run.dataset_version_name || '—';
+                        document.getElementById('progressBar').style.width = '100%';
+                        document.getElementById('progressBar').className = 'progress-bar error';
+
+                    } else {
+                        banner.className = 'status-banner';
+                    }
+                })
+                .catch(function(e) {
+                    console.error('pollStatus error:', e);
+                });
+        }
+
+        function startPolling() {
+            pollStatus();
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(pollStatus, 5000);
+        }
+
+        /* ─────────────────────────────────────────────
+           Load Training History
+        ───────────────────────────────────────────── */
+        function loadHistory() {
+            fetch('/classifier/api/training/history/?_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    historyCache = data.runs || [];
+                    document.getElementById('historyCount').textContent = data.count || 0;
+
+                    var tbody = document.getElementById('historyBody');
+
+                    if (historyCache.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">' +
+                            '<div class="empty-state-icon">📋</div>No training runs yet.<br>' +
+                            'Start your first training run from the form.</div></td></tr>';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < historyCache.length; i++) {
+                        var run = historyCache[i];
+                        var statusClass = 'tag-' + run.status;
+                        var acc = run.test_accuracy ? (run.test_accuracy * 100).toFixed(2) + '%' : '—';
+                        var f1 = run.test_f1 ? (run.test_f1 * 100).toFixed(2) + '%' : '—';
+                        var dur = run.duration || '—';
+                        var activeLabel = run.is_active_model ? ' <span class="tag tag-active">★</span>' : '';
+
+                        var actions = '<button class="btn btn-sm" onclick="showRunDetail(' + i + ')">View</button>';
+                        if (run.status === 'completed' && !run.is_active_model) {
+                            actions += ' <button class="btn btn-sm btn-success" onclick="promoteRun(\'' +
+                                run.run_name.replace(/'/g, "\\'") + '\')">Promote</button>';
+                        }
+
+                        html += '<tr>' +
+                            '<td><span class="run-name">' + run.run_name + '</span>' + activeLabel + '</td>' +
+                            '<td><span class="tag ' + statusClass + '">' + run.status.toUpperCase() + '</span></td>' +
+                            '<td class="metric">' + acc + '</td>' +
+                            '<td class="metric">' + f1 + '</td>' +
+                            '<td>' + dur + '</td>' +
+                            '<td class="actions">' + actions + '</td>' +
+                            '</tr>';
+                    }
+                    tbody.innerHTML = html;
+
+                    // Update active model panel
+                    renderActiveModel();
+                })
+                .catch(function(e) {
+                    console.error('loadHistory error:', e);
+                });
+        }
+
+        /* ─────────────────────────────────────────────
+           Active Model Panel
+        ───────────────────────────────────────────── */
+        function renderActiveModel() {
+            var panel = document.getElementById('activeModelInfo');
+            var tag = document.getElementById('activeTag');
+            var active = null;
+            for (var i = 0; i < historyCache.length; i++) {
+                if (historyCache[i].is_active_model) {
+                    active = historyCache[i];
+                    break;
+                }
+            }
+
+            if (!active) {
+                tag.style.display = 'none';
+                panel.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🤖</div>' +
+                    'No active trained model.<br>Using original shipped model.</div>';
+                return;
+            }
+
+            tag.style.display = 'inline-block';
+            var acc = active.test_accuracy ? (active.test_accuracy * 100).toFixed(2) + '%' : '—';
+            var f1 = active.test_f1 ? (active.test_f1 * 100).toFixed(2) + '%' : '—';
+            panel.innerHTML =
+                '<div class="detail-row"><span class="detail-label">Run</span><span class="detail-value" style="font-family:monospace;font-size:12px;">' + active.run_name + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Dataset</span><span class="detail-value">' + (active.dataset_version_name || '—') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Accuracy</span><span class="detail-value">' + acc + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">F1 Score</span><span class="detail-value">' + f1 + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Epochs</span><span class="detail-value">' + (active.epochs_completed || '—') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">' + (active.duration || '—') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Trained</span><span class="detail-value">' + new Date(active.created_at).toLocaleDateString() + '</span></div>';
+        }
+
+        /* ─────────────────────────────────────────────
+           Promote a Run
+        ───────────────────────────────────────────── */
+        function promoteRun(runName) {
+            if (!confirm('Promote "' + runName + '" to the active model?\n\nThis will replace the currently serving model.')) {
+                return;
+            }
+
+            fetch('/classifier/api/training/promote/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ run_name: runName })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(res) {
+                if (!res.ok) {
+                    showToast(res.data.error || 'Promote failed', 'error');
+                    return;
+                }
+                showToast('Model promoted: ' + runName, 'success');
+                loadHistory();
+            })
+            .catch(function(e) {
+                showToast('Network error: ' + e.message, 'error');
+            });
+        }
+
+        /* ─────────────────────────────────────────────
+           Show Run Detail (Modal)
+        ───────────────────────────────────────────── */
+        function showRunDetail(idx) {
+            var run = historyCache[idx];
+            if (!run) return;
+
+            document.getElementById('modalTitle').textContent = run.run_name;
+
+            var acc = run.test_accuracy ? (run.test_accuracy * 100).toFixed(2) + '%' : '—';
+            var f1 = run.test_f1 ? (run.test_f1 * 100).toFixed(2) + '%' : '—';
+
+            var html = '';
+
+            // Status & Overview
+            html += '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="tag tag-' + run.status + '">' + run.status.toUpperCase() + '</span></span></div>';
+            if (run.is_active_model) {
+                html += '<div class="detail-row"><span class="detail-label">Active Model</span><span class="detail-value"><span class="tag tag-active">★ SERVING</span></span></div>';
+            }
+            html += '<div class="detail-row"><span class="detail-label">Dataset</span><span class="detail-value">' + (run.dataset_version_name || '—') + '</span></div>';
+            html += '<div class="detail-row"><span class="detail-label">Created</span><span class="detail-value">' + new Date(run.created_at).toLocaleString() + '</span></div>';
+            if (run.duration) {
+                html += '<div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">' + run.duration + '</span></div>';
+            }
+
+            // Metrics
+            if (run.status === 'completed' || run.test_accuracy) {
+                html += '<div class="detail-section-title">Evaluation Metrics</div>';
+                html += '<div class="detail-row"><span class="detail-label">Test Accuracy</span><span class="detail-value">' + acc + '</span></div>';
+                html += '<div class="detail-row"><span class="detail-label">Macro F1</span><span class="detail-value">' + f1 + '</span></div>';
+                html += '<div class="detail-row"><span class="detail-label">Epochs Completed</span><span class="detail-value">' + (run.epochs_completed || '—') + '</span></div>';
+            }
+
+            // Data stats
+            if (run.num_classes) {
+                html += '<div class="detail-section-title">Data Statistics</div>';
+                html += '<div class="detail-row"><span class="detail-label">Classes</span><span class="detail-value">' + run.num_classes + '</span></div>';
+                html += '<div class="detail-row"><span class="detail-label">Train Samples</span><span class="detail-value">' + (run.num_train_samples || '—') + '</span></div>';
+                html += '<div class="detail-row"><span class="detail-label">Val Samples</span><span class="detail-value">' + (run.num_val_samples || '—') + '</span></div>';
+                html += '<div class="detail-row"><span class="detail-label">Test Samples</span><span class="detail-value">' + (run.num_test_samples || '—') + '</span></div>';
+            }
+
+            // Comparison with previous
+            if (run.comparison && Object.keys(run.comparison).length > 0) {
+                html += '<div class="detail-section-title">Comparison vs Previous</div>';
+                var comp = run.comparison;
+                if (comp.accuracy_delta !== undefined) {
+                    var accDelta = (comp.accuracy_delta * 100).toFixed(2);
+                    var accColor = comp.accuracy_delta >= 0 ? '#16a34a' : '#dc2626';
+                    var accSign = comp.accuracy_delta >= 0 ? '+' : '';
+                    html += '<div class="detail-row"><span class="detail-label">Accuracy Δ</span><span class="detail-value" style="color:' + accColor + '">' + accSign + accDelta + '%</span></div>';
+                }
+                if (comp.f1_delta !== undefined) {
+                    var f1Delta = (comp.f1_delta * 100).toFixed(2);
+                    var f1Color = comp.f1_delta >= 0 ? '#16a34a' : '#dc2626';
+                    var f1Sign = comp.f1_delta >= 0 ? '+' : '';
+                    html += '<div class="detail-row"><span class="detail-label">F1 Δ</span><span class="detail-value" style="color:' + f1Color + '">' + f1Sign + f1Delta + '%</span></div>';
+                }
+                if (comp.recommendation) {
+                    html += '<div class="detail-row"><span class="detail-label">Recommendation</span><span class="detail-value">' + comp.recommendation + '</span></div>';
+                }
+            }
+
+            // Config
+            if (run.config && Object.keys(run.config).length > 0) {
+                html += '<div class="detail-section-title">Training Config</div>';
+                var cfg = run.config;
+                if (cfg.epochs !== undefined) html += '<div class="detail-row"><span class="detail-label">Epochs</span><span class="detail-value">' + cfg.epochs + '</span></div>';
+                if (cfg.batch_size !== undefined) html += '<div class="detail-row"><span class="detail-label">Batch Size</span><span class="detail-value">' + cfg.batch_size + '</span></div>';
+                if (cfg.learning_rate_fc !== undefined) html += '<div class="detail-row"><span class="detail-label">LR (FC)</span><span class="detail-value">' + cfg.learning_rate_fc + '</span></div>';
+                if (cfg.learning_rate_ft !== undefined) html += '<div class="detail-row"><span class="detail-label">LR (Fine-tune)</span><span class="detail-value">' + cfg.learning_rate_ft + '</span></div>';
+                if (cfg.unfreeze_layers !== undefined) html += '<div class="detail-row"><span class="detail-label">Unfreeze Layers</span><span class="detail-value">' + cfg.unfreeze_layers + '</span></div>';
+                if (cfg.base_model !== undefined) html += '<div class="detail-row"><span class="detail-label">Base Model</span><span class="detail-value">' + (cfg.base_model || 'Active model') + '</span></div>';
+                if (cfg.notes) html += '<div class="detail-row"><span class="detail-label">Notes</span><span class="detail-value">' + cfg.notes + '</span></div>';
+            }
+
+            // Error
+            if (run.error_message) {
+                html += '<div class="detail-section-title">Error</div>';
+                html += '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:12px;font-size:12px;color:#991b1b;font-family:monospace;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;">' + run.error_message + '</div>';
+            }
+
+            // Model path
+            if (run.model_path) {
+                html += '<div class="detail-section-title">Artefacts</div>';
+                html += '<div class="detail-row"><span class="detail-label">Model Path</span><span class="detail-value" style="font-size:11px;font-family:monospace;">' + run.model_path + '</span></div>';
+            }
+
+            // Promote button in modal
+            if (run.status === 'completed' && !run.is_active_model) {
+                html += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid #e0e0e0;text-align:right;">' +
+                    '<button class="btn btn-success" onclick="promoteRun(\'' + run.run_name.replace(/'/g, "\\'") + '\');closeModal();">★ Promote to Active</button>' +
+                    '</div>';
+            }
+
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function closeModal(e) {
+            if (!e || e.target === document.getElementById('modalOverlay')) {
+                document.getElementById('modalOverlay').classList.remove('active');
+            }
+        }
+
+        /* ─────────────────────────────────────────────
+           Init
+        ───────────────────────────────────────────── */
+        function init() {
+            loadVersions();
+            loadHistory();
+            startPolling();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        init();
+    </script>
+</body>
+</html>

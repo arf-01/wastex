@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WasteX — Inspect OOD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 span { color: #666; font-weight: 400; }
+        .header a {
+            font-size: 13px;
+            color: #666;
+            text-decoration: none;
+        }
+        .header a:hover { color: #1a1a1a; }
+
+        /* ── Container ── */
+        .container {
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn-primary {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #1a1a1a;
+        }
+        .btn-primary:hover { background: #333; }
+        .btn-success {
+            background: #22c55e;
+            color: #fff;
+            border-color: #22c55e;
+        }
+        .btn-success:hover { background: #16a34a; }
+        .btn-ghost {
+            background: transparent;
+            border-color: transparent;
+            color: #999;
+            padding: 6px 12px;
+        }
+        .btn-ghost:hover { color: #333; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+        /* ── Filter Tabs ── */
+        .filter-tabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        .tab {
+            padding: 8px 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.15s;
+        }
+        .tab:hover { background: #f0f0f0; color: #333; }
+        .tab.active {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #1a1a1a;
+        }
+        .tab-count {
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        /* ── Stats Bar ── */
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: #888;
+        }
+        .stat-item strong {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        /* ── Image Grid ── */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .image-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: box-shadow 0.15s, border-color 0.15s;
+        }
+        .image-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: #ccc;
+        }
+        .image-card.reviewed-card {
+            opacity: 0.7;
+        }
+        .image-card.reviewed-card:hover { opacity: 1; }
+        .image-card-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #f0f0f0;
+            display: block;
+        }
+        .image-card-body {
+            padding: 12px 16px;
+        }
+        .image-card-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .image-card-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+        }
+        .image-card-energy {
+            font-weight: 600;
+            color: #dc2626;
+            font-variant-numeric: tabular-nums;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .tag-pending { background: #fef3c7; color: #92400e; }
+        .tag-reviewed { background: #dcfce7; color: #166534; }
+        .tag-ood { background: #fee2e2; color: #991b1b; }
+
+        /* ── Pagination ── */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 40px;
+            font-size: 13px;
+            color: #888;
+        }
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            background: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .pagination button:hover { background: #f0f0f0; }
+        .pagination button:disabled { opacity: 0.3; cursor: default; }
+
+        .empty-state {
+            padding: 80px 20px;
+            text-align: center;
+            color: #ccc;
+            font-size: 14px;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* ── Detail Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff;
+            border-radius: 8px;
+            width: 640px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+        }
+        .modal-header h3 { font-size: 14px; font-weight: 600; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+            padding: 4px 8px;
+            line-height: 1;
+        }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .modal-img {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            background: #f5f5f5;
+            max-height: 400px;
+            object-fit: contain;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #888; }
+        .detail-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        .logits-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .logits-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .logit-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 3px 0;
+            font-size: 13px;
+        }
+        .logit-name {
+            width: 110px;
+            color: #666;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+        .logit-bar-wrap {
+            flex: 1;
+            background: #f0f0f0;
+            border-radius: 3px;
+            height: 12px;
+            overflow: hidden;
+        }
+        .logit-bar {
+            height: 100%;
+            border-radius: 3px;
+            background: #1a1a1a;
+            transition: width 0.3s ease;
+        }
+        .logit-bar.negative { background: #dc2626; }
+        .logit-val {
+            width: 65px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .label-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .label-select {
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #fff;
+            cursor: pointer;
+            flex: 1;
+            min-width: 140px;
+        }
+        .label-select:focus { outline: none; border-color: #1a1a1a; }
+        .label-input {
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #fff;
+            flex: 1;
+            min-width: 140px;
+        }
+        .label-input:focus { outline: none; border-color: #1a1a1a; }
+        .label-input::placeholder { color: #bbb; }
+
+        .dataset-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: #dbeafe;
+            color: #1e40af;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .tag-labeled { background: #dbeafe; color: #1e40af; }
+
+        @media (max-width: 640px) {
+            .image-grid { grid-template-columns: 1fr; }
+            .container { padding: 0 16px; margin: 24px auto; }
+            .header { padding: 12px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WasteX <span>Inspect OOD</span></h1>
+        <div style="display:flex;gap:16px;align-items:center;">
+            <a href="{% url 'dataset' %}">Dataset</a>
+            <a href="{% url 'training' %}">Training</a>
+            <a href="{% url 'dashboard' %}">← Dashboard</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="tab active" id="tabAll" onclick="setFilter('all')">All <span class="tab-count" id="tabAllCount"></span></button>
+            <button class="tab" id="tabPending" onclick="setFilter('pending')">Pending <span class="tab-count" id="tabPendingCount"></span></button>
+            <button class="tab" id="tabReviewed" onclick="setFilter('reviewed')">Reviewed <span class="tab-count" id="tabReviewedCount"></span></button>
+        </div>
+
+        <!-- Image Grid -->
+        <div id="imageGrid" class="image-grid">
+            <div class="empty-state">
+                <div class="empty-state-icon">⏳</div>
+                Loading…
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="pagination" style="display:none;">
+            <button id="prevBtn" onclick="loadImages(currentPage-1)">← Prev</button>
+            <span id="pageInfo"></span>
+            <button id="nextBtn" onclick="loadImages(currentPage+1)">Next →</button>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">Image Detail</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
+        var currentPage = 1;
+        var currentFilter = 'all';
+        var imageCache = [];
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.getElementById('tabAll').className = 'tab' + (filter === 'all' ? ' active' : '');
+            document.getElementById('tabPending').className = 'tab' + (filter === 'pending' ? ' active' : '');
+            document.getElementById('tabReviewed').className = 'tab' + (filter === 'reviewed' ? ' active' : '');
+            loadImages(1);
+        }
+
+        function loadImages(page) {
+            page = page || 1;
+            currentPage = page;
+
+            var url = '/classifier/api/ood/?page=' + page + '&per_page=12&_=' + Date.now();
+            if (currentFilter === 'pending') url += '&reviewed=false';
+            else if (currentFilter === 'reviewed') url += '&reviewed=true';
+
+            fetch(url)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    imageCache = data.images;
+
+                    // Update tab counts (only from 'all' request)
+                    if (currentFilter === 'all' && data.unreviewed !== undefined) {
+                        document.getElementById('tabAllCount').textContent = data.total;
+                        document.getElementById('tabPendingCount').textContent = data.unreviewed;
+                        document.getElementById('tabReviewedCount').textContent = data.total - data.unreviewed;
+                    }
+
+                    var grid = document.getElementById('imageGrid');
+
+                    if (data.images.length === 0) {
+                        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">✅</div>' +
+                            (currentFilter === 'pending' ? 'All images have been reviewed' : 'No OOD images found') + '</div>';
+                        document.getElementById('pagination').style.display = 'none';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < data.images.length; i++) {
+                        var img = data.images[i];
+                        var energyStr = img.energy !== null ? img.energy.toFixed(3) : '-';
+                        var statusTag;
+                        if (img.assigned_label) {
+                            statusTag = '<span class="tag tag-labeled">' + img.assigned_label + '</span>';
+                        } else if (img.reviewed) {
+                            statusTag = '<span class="tag tag-reviewed">Reviewed</span>';
+                        } else {
+                            statusTag = '<span class="tag tag-pending">Pending</span>';
+                        }
+                        var reviewedClass = img.reviewed ? ' reviewed-card' : '';
+
+                        html += '<div class="image-card' + reviewedClass + '" onclick="showDetail(' + i + ')">' +
+                            '<img class="image-card-img" src="' + (img.image_url || '') + '" onerror="this.style.background=\'#f0f0f0\'" alt="">' +
+                            '<div class="image-card-body">' +
+                                '<div class="image-card-name">' + img.filename + '</div>' +
+                                '<div class="image-card-meta">' +
+                                    statusTag +
+                                    '<span class="image-card-energy">' + energyStr + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    }
+                    grid.innerHTML = html;
+
+                    // Pagination
+                    var pag = document.getElementById('pagination');
+                    if (data.pages > 1) {
+                        pag.style.display = 'flex';
+                        document.getElementById('pageInfo').textContent =
+                            'Page ' + data.page + ' of ' + data.pages;
+                        document.getElementById('prevBtn').disabled = data.page <= 1;
+                        document.getElementById('nextBtn').disabled = data.page >= data.pages;
+                    } else {
+                        pag.style.display = 'none';
+                    }
+                })
+                .catch(function(e) {
+                    console.error('loadImages error:', e);
+                    document.getElementById('imageGrid').innerHTML =
+                        '<div class="empty-state" style="grid-column:1/-1;">Failed to load images</div>';
+                });
+
+            // Also load total counts for tabs
+            if (currentFilter !== 'all') {
+                fetch('/classifier/api/ood/?page=1&per_page=1&_=' + Date.now())
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        if (data.unreviewed !== undefined) {
+                            document.getElementById('tabAllCount').textContent = data.total;
+                            document.getElementById('tabPendingCount').textContent = data.unreviewed;
+                            document.getElementById('tabReviewedCount').textContent = data.total - data.unreviewed;
+                        }
+                    });
+            }
+        }
+
+        function showDetail(idx) {
+            var img = imageCache[idx];
+            if (!img) return;
+
+            document.getElementById('modalTitle').textContent = img.filename;
+
+            var logitsHtml = '<div style="color:#ccc;font-size:13px">No logits available</div>';
+            if (img.logits && img.logits.length) {
+                var maxAbs = 1;
+                for (var j = 0; j < img.logits.length; j++) {
+                    var a = Math.abs(img.logits[j]);
+                    if (a > maxAbs) maxAbs = a;
+                }
+                logitsHtml = '';
+                for (var j = 0; j < img.logits.length; j++) {
+                    var v = img.logits[j];
+                    var pct = (Math.abs(v) / maxAbs * 100).toFixed(1);
+                    var cls = v < 0 ? ' negative' : '';
+                    logitsHtml += '<div class="logit-row">' +
+                        '<span class="logit-name">' + (CLASS_NAMES[j] || 'Class ' + j) + '</span>' +
+                        '<div class="logit-bar-wrap"><div class="logit-bar' + cls + '" style="width:' + pct + '%"></div></div>' +
+                        '<span class="logit-val">' + v.toFixed(4) + '</span>' +
+                    '</div>';
+                }
+            }
+
+            var statusTag;
+            if (img.assigned_label) {
+                statusTag = '<span class="tag tag-labeled">' + img.assigned_label + '</span>';
+            } else if (img.reviewed) {
+                statusTag = '<span class="tag tag-reviewed">Reviewed</span>';
+            } else {
+                statusTag = '<span class="tag tag-pending">Pending</span>';
+            }
+
+            var bodyHtml = '';
+            if (img.image_url) {
+                bodyHtml += '<img class="modal-img" src="' + img.image_url + '" alt="">';
+            }
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">' + statusTag + '</span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Energy Score</span><span class="detail-value" style="color:#dc2626">' + (img.energy !== null ? img.energy.toFixed(6) : '-') + '</span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Dimensions</span><span class="detail-value">' + (img.width || '-') + ' × ' + (img.height || '-') + '</span></div>';
+            bodyHtml += '<div class="detail-row"><span class="detail-label">Uploaded</span><span class="detail-value">' + new Date(img.uploaded_at).toLocaleString() + '</span></div>';
+            bodyHtml += '<div class="logits-section"><div class="logits-title">Logits</div>' + logitsHtml + '</div>';
+
+            // Labeling actions
+            bodyHtml += '<div class="modal-actions">';
+
+            if (img.assigned_label) {
+                bodyHtml += '<span class="dataset-badge">✓ Labeled as <strong style="margin-left:4px">' + img.assigned_label + '</strong></span>';
+                if (img.added_to_dataset) {
+                    bodyHtml += '<span style="font-size:11px;color:#888;margin-left:8px">Added to dataset</span>';
+                } else {
+                    bodyHtml += '<span style="font-size:11px;color:#888;margin-left:8px">Staged — will be included in next version</span>';
+                }
+            } else {
+                // Label group: dropdown of known classes + text input for new class
+                bodyHtml += '<div class="label-group">';
+                bodyHtml += '<select class="label-select" id="labelSelect" onchange="onLabelSelectChange()">';
+                bodyHtml += '<option value="">— Pick existing class —</option>';
+                for (var k = 0; k < CLASS_NAMES.length; k++) {
+                    bodyHtml += '<option value="' + CLASS_NAMES[k] + '">' + CLASS_NAMES[k] + '</option>';
+                }
+                bodyHtml += '<option value="__new__">+ New class…</option>';
+                bodyHtml += '</select>';
+                bodyHtml += '<input class="label-input" id="labelInput" type="text" placeholder="Or type new class name" style="display:none">';
+                bodyHtml += '</div>';
+                bodyHtml += '<button class="btn btn-sm btn-primary" onclick="labelImage(' + img.id + ', ' + idx + ')">Assign Label</button>';
+                bodyHtml += '<button class="btn btn-sm btn-ghost" onclick="markReview(' + img.id + ', true, ' + idx + ')">Skip (mark reviewed)</button>';
+            }
+
+            bodyHtml += '</div>';
+
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            document.getElementById('modalOverlay').classList.add('active');
+        }
+
+        function markReview(imageId, reviewed, idx) {
+            fetch('/classifier/api/ood/' + imageId + '/review/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reviewed: reviewed })
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                // Update cache
+                if (imageCache[idx]) {
+                    imageCache[idx].reviewed = data.reviewed;
+                }
+                // Refresh the detail modal
+                showDetail(idx);
+                // Refresh the grid
+                loadImages(currentPage);
+            })
+            .catch(function(e) {
+                console.error('markReview error:', e);
+                alert('Failed to update review status');
+            });
+        }
+
+        function onLabelSelectChange() {
+            var sel = document.getElementById('labelSelect');
+            var inp = document.getElementById('labelInput');
+            if (sel.value === '__new__') {
+                inp.style.display = 'block';
+                inp.focus();
+            } else {
+                inp.style.display = 'none';
+                inp.value = '';
+            }
+        }
+
+        function labelImage(imageId, idx) {
+            var sel = document.getElementById('labelSelect');
+            var inp = document.getElementById('labelInput');
+            var label = '';
+
+            if (sel.value === '__new__') {
+                label = inp.value.trim();
+                if (!label) {
+                    alert('Please enter a class name.');
+                    inp.focus();
+                    return;
+                }
+            } else {
+                label = sel.value;
+            }
+            if (!label) {
+                alert('Please select or enter a class label.');
+                return;
+            }
+
+            fetch('/classifier/api/ood/' + imageId + '/label/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label: label })
+            })
+            .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) {
+                    alert(result.data.error || 'Failed to label image');
+                    return;
+                }
+                if (imageCache[idx]) {
+                    imageCache[idx].assigned_label = result.data.assigned_label;
+                    imageCache[idx].reviewed = true;
+                }
+                showDetail(idx);
+                loadImages(currentPage);
+            })
+            .catch(function(e) {
+                console.error('labelImage error:', e);
+                alert('Failed to label image');
+            });
+        }
+
+        function closeModal(e) {
+            if (!e || e.target === document.getElementById('modalOverlay')) {
+                document.getElementById('modalOverlay').classList.remove('active');
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Init
+        loadImages(1);
+    </script>
+</body>
+</html>

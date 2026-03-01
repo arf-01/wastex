@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WasteX — Classify</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 span { color: #666; font-weight: 400; }
+        .header a {
+            font-size: 13px;
+            color: #666;
+            text-decoration: none;
+        }
+        .header a:hover { color: #1a1a1a; }
+
+        .container {
+            max-width: 640px;
+            margin: 60px auto;
+            padding: 0 24px;
+        }
+
+        /* Drop Zone */
+        .dropzone {
+            border: 2px dashed #d0d0d0;
+            border-radius: 8px;
+            padding: 48px 24px;
+            text-align: center;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .dropzone.drag-over {
+            border-color: #1a1a1a;
+            background: #fafafa;
+        }
+        .dropzone.has-file {
+            border-color: #22c55e;
+            border-style: solid;
+        }
+        .dropzone-icon {
+            font-size: 36px;
+            color: #ccc;
+            margin-bottom: 12px;
+        }
+        .dropzone-text {
+            font-size: 14px;
+            color: #888;
+        }
+        .dropzone-text strong { color: #333; }
+        .dropzone input[type="file"] { display: none; }
+
+        /* Preview */
+        .preview {
+            display: none;
+            margin-top: 20px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .preview.active { display: block; }
+        .preview img {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            background: #f9f9f9;
+        }
+        .preview-info {
+            padding: 12px 16px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Classify Button */
+        .actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 24px;
+            border: 1px solid #d0d0d0;
+            border-radius: 6px;
+            background: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            color: #333;
+            transition: all 0.15s;
+            flex: 1;
+            text-align: center;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn:disabled { opacity: 0.4; cursor: default; }
+        .btn-primary {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #1a1a1a;
+        }
+        .btn-primary:hover { background: #333; }
+        .btn-clear {
+            background: transparent;
+            border-color: transparent;
+            color: #999;
+            flex: 0;
+            white-space: nowrap;
+        }
+        .btn-clear:hover { color: #333; }
+
+        /* Result */
+        .result {
+            display: none;
+            margin-top: 20px;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .result.active { display: block; }
+        .result-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+        }
+        .result-body { padding: 16px 20px; }
+
+        .result-verdict {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .tag-id { background: #dcfce7; color: #166534; }
+        .tag-ood { background: #fee2e2; color: #991b1b; }
+        .verdict-text { font-size: 15px; font-weight: 500; }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #888; }
+        .detail-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        .logits-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .logits-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .logit-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        .logit-name {
+            width: 120px;
+            color: #666;
+            flex-shrink: 0;
+        }
+        .logit-bar-wrap {
+            flex: 1;
+            background: #f0f0f0;
+            border-radius: 3px;
+            height: 14px;
+            overflow: hidden;
+        }
+        .logit-bar {
+            height: 100%;
+            border-radius: 3px;
+            background: #1a1a1a;
+            transition: width 0.3s ease;
+        }
+        .logit-bar.negative { background: #dc2626; }
+        .logit-val {
+            width: 70px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+            font-size: 12px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WasteX <span>Classify</span></h1>
+        <a href="/classifier/dashboard/">← Dashboard</a>
+    </div>
+
+    <div class="container">
+        <!-- Drop Zone -->
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <div class="dropzone-icon">📷</div>
+            <div class="dropzone-text">
+                <strong>Click to select</strong> or drag & drop an image
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <!-- Preview -->
+        <div class="preview" id="preview">
+            <img id="previewImg" src="" alt="Preview">
+            <div class="preview-info">
+                <span id="previewName">-</span>
+                <span id="previewSize">-</span>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <button class="btn btn-primary" id="classifyBtn" onclick="classifyImage()" disabled>
+                Classify
+            </button>
+            <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+        </div>
+
+        <!-- Result -->
+        <div class="result" id="result">
+            <div class="result-header">Classification Result</div>
+            <div class="result-body" id="resultBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
+        let selectedFile = null;
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-over');
+        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+            selectedFile = file;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('previewImg').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            document.getElementById('previewName').textContent = file.name;
+            document.getElementById('previewSize').textContent =
+                (file.size / 1024).toFixed(1) + ' KB';
+
+            preview.classList.add('active');
+            dropzone.classList.add('has-file');
+            document.getElementById('classifyBtn').disabled = false;
+            document.getElementById('result').classList.remove('active');
+        }
+
+        async function classifyImage() {
+            if (!selectedFile) return;
+
+            const btn = document.getElementById('classifyBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Classifying…';
+
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+
+            try {
+                const res = await fetch('/classifier/classify/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResult(data);
+                }
+            } catch (e) {
+                showError('Request failed. Is the server running?');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Classify';
+        }
+
+        function showResult(data) {
+            const body = document.getElementById('resultBody');
+
+            // Verdict
+            let verdictHtml;
+            if (data.ood) {
+                verdictHtml = `
+                    <div class="result-verdict">
+                        <span class="tag tag-ood">OOD</span>
+                        <span class="verdict-text">Out-of-Distribution — saved for review</span>
+                    </div>`;
+            } else {
+                verdictHtml = `
+                    <div class="result-verdict">
+                        <span class="tag tag-id">ID</span>
+                        <span class="verdict-text">${data.predicted_class}</span>
+                    </div>`;
+            }
+
+            // Details
+            const detailsHtml = `
+                <div class="detail-row">
+                    <span class="detail-label">Energy Score</span>
+                    <span class="detail-value">${data.energy.toFixed(6)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">OOD Detected</span>
+                    <span class="detail-value">${data.ood ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Saved to DB</span>
+                    <span class="detail-value">${data.saved_to_db ? 'Yes' : 'No'}</span>
+                </div>
+            `;
+
+            // Logits
+            const maxAbs = Math.max(...data.logits.map(v => Math.abs(v)), 1);
+            const logitsHtml = data.logits.map((v, i) => {
+                const pct = Math.abs(v) / maxAbs * 100;
+                const cls = v < 0 ? 'negative' : '';
+                return `
+                    <div class="logit-row">
+                        <span class="logit-name">${CLASS_NAMES[i] || 'Class ' + i}</span>
+                        <div class="logit-bar-wrap">
+                            <div class="logit-bar ${cls}" style="width:${pct}%"></div>
+                        </div>
+                        <span class="logit-val">${v.toFixed(4)}</span>
+                    </div>`;
+            }).join('');
+
+            body.innerHTML = `
+                ${verdictHtml}
+                ${detailsHtml}
+                <div class="logits-section">
+                    <div class="logits-title">Logits</div>
+                    ${logitsHtml}
+                </div>
+            `;
+
+            document.getElementById('result').classList.add('active');
+        }
+
+        function showError(msg) {
+            const body = document.getElementById('resultBody');
+            body.innerHTML = `<div style="color:#dc2626;padding:8px 0">${msg}</div>`;
+            document.getElementById('result').classList.add('active');
+        }
+
+        function clearAll() {
+            selectedFile = null;
+            fileInput.value = '';
+            preview.classList.remove('active');
+            dropzone.classList.remove('has-file');
+            document.getElementById('classifyBtn').disabled = true;
+            document.getElementById('result').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

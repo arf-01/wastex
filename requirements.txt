@@ -1,0 +1,16 @@
+# Core
+Django==5.2.10
+
+# Database
+psycopg2-binary==2.9.9
+
+# Image processing
+Pillow==11.0.0
+numpy==1.26.4
+
+# Machine Learning - TensorFlow / Keras
+tensorflow>=2.15.0
+
+# Training pipeline
+matplotlib>=3.8.0
+scikit-learn>=1.4.0

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WasteX — Dataset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+
+        .header {
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header h1 span { color: #666; font-weight: 400; }
+        .header-links { display: flex; gap: 16px; align-items: center; }
+        .header a { font-size: 13px; color: #666; text-decoration: none; }
+        .header a:hover { color: #1a1a1a; }
+
+        .container { max-width: 1100px; margin: 40px auto; padding: 0 24px; }
+
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 10px 20px; border: 1px solid #d0d0d0; border-radius: 6px;
+            background: #fff; font-size: 14px; font-family: inherit;
+            cursor: pointer; color: #333; transition: all 0.15s; text-decoration: none;
+        }
+        .btn:hover { background: #f0f0f0; }
+        .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+        .btn-primary:hover { background: #333; }
+        .btn-sm { padding: 6px 14px; font-size: 13px; }
+        .btn:disabled { opacity: 0.4; cursor: default; }
+
+        /* ── Staged banner ── */
+        .staged-banner {
+            background: #fefce8; border: 1px solid #fde047; border-radius: 8px;
+            padding: 16px 20px; margin-bottom: 24px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .staged-banner-left h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .staged-banner-left p { font-size: 12px; color: #92400e; }
+        .staged-count { font-size: 28px; font-weight: 700; color: #92400e; }
+
+        /* ── Versions list ── */
+        .versions-title {
+            font-size: 14px; font-weight: 600; margin-bottom: 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .version-card {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 20px 24px; margin-bottom: 12px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .version-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-color: #ccc; }
+        .version-card.active { border-color: #1a1a1a; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .version-header {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+        }
+        .version-name { font-size: 16px; font-weight: 700; }
+        .version-meta { font-size: 12px; color: #888; }
+        .version-stats { display: flex; gap: 16px; font-size: 13px; color: #666; flex-wrap: wrap; }
+        .version-stat { display: flex; align-items: center; gap: 4px; }
+        .version-stat strong { color: #1a1a1a; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+        .tag-original { background: #f0fdf4; color: #166534; }
+        .tag-version { background: #eff6ff; color: #1e40af; }
+        .tag-active { background: #dcfce7; color: #166534; }
+
+        /* ── Split tabs ── */
+        .tab {
+            padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 6px;
+            background: #fff; font-size: 13px; font-family: inherit;
+            cursor: pointer; color: #666; transition: all 0.15s;
+        }
+        .tab:hover { background: #f0f0f0; color: #333; }
+        .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+        /* ── Class browser ── */
+        .browser-section { display: none; margin-top: 24px; }
+        .class-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px; margin-bottom: 24px;
+        }
+        .class-card {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+            padding: 12px 16px; cursor: pointer; transition: all 0.15s; text-align: center;
+        }
+        .class-card:hover { border-color: #ccc; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .class-card.active { border-color: #1a1a1a; }
+        .class-card-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; text-transform: capitalize; }
+        .class-card-count { font-size: 20px; font-weight: 700; }
+
+        .image-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px; margin-bottom: 24px;
+        }
+        .img-thumb {
+            width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px;
+            background: #f0f0f0; display: block; border: 1px solid #e0e0e0; cursor: pointer;
+        }
+        .img-thumb:hover { border-color: #ccc; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .img-name { font-size: 10px; color: #888; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .pagination {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; margin-bottom: 40px; font-size: 13px; color: #888;
+        }
+        .pagination button {
+            padding: 6px 14px; border: 1px solid #d0d0d0; border-radius: 4px;
+            background: #fff; font-size: 13px; cursor: pointer; font-family: inherit;
+        }
+        .pagination button:hover { background: #f0f0f0; }
+        .pagination button:disabled { opacity: 0.3; cursor: default; }
+
+        .empty-state { padding: 60px 20px; text-align: center; color: #ccc; font-size: 14px; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+
+        /* ── Create version modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px); z-index: 100; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #fff; border-radius: 8px; width: 480px; max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .modal-header {
+            padding: 16px 20px; border-bottom: 1px solid #e0e0e0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header h3 { font-size: 14px; font-weight: 600; }
+        .modal-close {
+            background: none; border: none; font-size: 20px; cursor: pointer;
+            color: #999; padding: 4px 8px; line-height: 1;
+        }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-input {
+            width: 100%; padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px;
+            font-size: 14px; font-family: inherit; background: #fff;
+        }
+        .form-input:focus { outline: none; border-color: #1a1a1a; }
+        .form-select {
+            width: 100%; padding: 10px 12px; border: 1px solid #d0d0d0; border-radius: 6px;
+            font-size: 14px; font-family: inherit; background: #fff; cursor: pointer;
+        }
+        .form-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid #e0e0e0; display: flex; gap: 8px; justify-content: flex-end; }
+
+        .lightbox-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+            z-index: 200; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .lightbox-overlay.active { display: flex; }
+        .lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+
+        @media (max-width: 640px) {
+            .class-grid { grid-template-columns: repeat(2, 1fr); }
+            .image-grid { grid-template-columns: repeat(3, 1fr); }
+            .container { padding: 0 16px; margin: 24px auto; }
+            .header { padding: 12px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WasteX <span>Dataset</span></h1>
+        <div class="header-links">
+            <a href="{% url 'training' %}">Training</a>
+            <a href="{% url 'inspect' %}">Inspect OOD</a>
+            <a href="{% url 'dashboard' %}">← Dashboard</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Staged images banner -->
+        <div class="staged-banner" id="stagedBanner" style="display:none;">
+            <div class="staged-banner-left">
+                <h3>Staged Images</h3>
+                <p id="stagedDetail">Labeled OOD images ready to be added to a new dataset version</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div class="staged-count" id="stagedCount">0</div>
+                <button class="btn btn-sm btn-primary" onclick="showCreateModal()">Create New Version</button>
+            </div>
+        </div>
+
+        <!-- Versions list -->
+        <div class="versions-title">
+            <span>Dataset Versions</span>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-sm" onclick="showRegisterModal()">Register Existing</button>
+                <button class="btn btn-sm btn-primary" onclick="showCreateModal()">+ New Version</button>
+            </div>
+        </div>
+        <div id="versionsList">
+            <div class="empty-state"><div class="empty-state-icon">⏳</div>Loading…</div>
+        </div>
+
+        <!-- Class browser (shown when a version is selected) -->
+        <div class="browser-section" id="browserSection">
+            <!-- Split tabs (shown if version has train/test/val) -->
+            <div id="splitTabs" style="display:none;gap:8px;margin-bottom:16px;flex-wrap:wrap;"></div>
+
+            <div class="versions-title">
+                <span id="browserTitle">Classes</span>
+                <span style="font-weight:400;color:#888;font-size:13px" id="browserSubtitle"></span>
+            </div>
+            <div class="class-grid" id="classGrid"></div>
+
+            <div id="imageSection" style="display:none;">
+                <div class="versions-title">
+                    <span id="imageSectionTitle">Images</span>
+                    <span style="font-weight:400;color:#888;font-size:13px" id="imageSectionCount"></span>
+                </div>
+                <div class="image-grid" id="imageGrid"></div>
+                <div class="pagination" id="pagination" style="display:none;">
+                    <button id="prevBtn" onclick="loadVersionImages(selectedVersion, selectedSplit, selectedClass, currentPage-1)">← Prev</button>
+                    <span id="pageInfo"></span>
+                    <button id="nextBtn" onclick="loadVersionImages(selectedVersion, selectedSplit, selectedClass, currentPage+1)">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create version modal -->
+    <div class="modal-overlay" id="createModal" onclick="closeCreateModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Create New Dataset Version</h3>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Version Name</label>
+                    <input class="form-input" id="versionName" type="text" placeholder="e.g. v1, v2, experiment-1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Base Dataset (Parent)</label>
+                    <select class="form-select" id="versionParent">
+                        <option value="">— No parent (empty) —</option>
+                    </select>
+                    <div class="form-hint">New version inherits parent's entries + all staged labeled images (no disk copy)</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes (optional)</label>
+                    <input class="form-input" id="versionNotes" type="text" placeholder="What changed in this version?">
+                </div>
+                <div id="createStatus" style="font-size:13px;color:#888;margin-top:8px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-sm" onclick="closeCreateModal()">Cancel</button>
+                <button class="btn btn-sm btn-primary" id="createBtn" onclick="createVersion()">Create Version</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register existing version modal -->
+    <div class="modal-overlay" id="registerModal" onclick="closeRegisterModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Register Existing Dataset Folder</h3>
+                <button class="modal-close" onclick="closeRegisterModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Folder Name</label>
+                    <input class="form-input" id="registerName" type="text" placeholder="e.g. v1 (must match folder name in datasets/)">
+                    <div class="form-hint">The folder must already exist at <code>datasets/&lt;name&gt;/</code></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Parent Version (optional)</label>
+                    <select class="form-select" id="registerParent">
+                        <option value="">— None —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes (optional)</label>
+                    <input class="form-input" id="registerNotes" type="text" placeholder="e.g. Original training dataset">
+                </div>
+                <div id="registerStatus" style="font-size:13px;color:#888;margin-top:8px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-sm" onclick="closeRegisterModal()">Cancel</button>
+                <button class="btn btn-sm btn-primary" id="registerBtn" onclick="registerVersion()">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+        <img class="lightbox-img" id="lightboxImg" src="" alt="">
+    </div>
+
+    <script>
+        var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
+        var versions = [];
+        var selectedVersion = '';
+        var selectedVersionData = null;
+        var selectedSplit = '';
+        var selectedClass = '';
+        var currentPage = 1;
+
+        // ── Load versions ──
+        function loadVersions() {
+            fetch('/classifier/api/dataset/versions/?_=' + Date.now())
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    versions = data.versions;
+
+                    // Staged banner
+                    if (data.staged_count > 0) {
+                        document.getElementById('stagedBanner').style.display = 'flex';
+                        document.getElementById('stagedCount').textContent = data.staged_count;
+                    } else {
+                        document.getElementById('stagedBanner').style.display = 'none';
+                    }
+
+                    // Version cards
+                    var list = document.getElementById('versionsList');
+                    if (versions.length === 0) {
+                        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📂</div>' +
+                            'No dataset versions registered yet.<br>If you have a dataset folder (e.g. <code>datasets/v1/</code>), click <strong>Register Existing</strong> above.</div>';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < versions.length; i++) {
+                        var v = versions[i];
+                        var isActive = v.name === selectedVersion;
+                        var classNames = v.classes || [];
+                        var splitsStr = (v.splits && v.splits.length) ? v.splits.join(', ') : 'flat';
+
+                        html += '<div class="version-card' + (isActive ? ' active' : '') + '" onclick="selectVersion(\'' + v.name + '\')">';
+                        html += '<div class="version-header">';
+                        html += '<div><span class="version-name">' + v.name + '</span> <span class="tag tag-version">VERSION</span>';
+                        if (v.is_active) html += ' <span class="tag tag-active">★ ACTIVE</span>';
+                        html += '</div>';
+                        html += '<span class="version-meta">' + new Date(v.created_at).toLocaleDateString() + '</span>';
+                        html += '</div>';
+                        html += '<div class="version-stats">';
+                        html += '<div class="version-stat"><strong>' + v.total_images + '</strong> images</div>';
+                        html += '<div class="version-stat"><strong>' + classNames.length + '</strong> classes</div>';
+                        html += '<div class="version-stat">splits: <strong>' + splitsStr + '</strong></div>';
+                        if (v.parent) html += '<div class="version-stat">from <strong>' + v.parent + '</strong></div>';
+                        html += '</div>';
+                        if (v.notes) html += '<div style="font-size:12px;color:#999;margin-top:6px">' + v.notes + '</div>';
+                        if (!v.is_active) html += '<button class="btn btn-sm" style="margin-top:8px" onclick="event.stopPropagation();activateVersion(\'' + v.name + '\')">Set as Active</button>';
+                        html += '</div>';
+                    }
+                    list.innerHTML = html;
+
+                    // Populate parent dropdown in create modal
+                    var sel = document.getElementById('versionParent');
+                    sel.innerHTML = '<option value="">— No parent (empty) —</option>';
+                    for (var i = 0; i < versions.length; i++) {
+                        sel.innerHTML += '<option value="' + versions[i].name + '">' + versions[i].name + ' (' + versions[i].total_images + ' images)</option>';
+                    }
+                })
+                .catch(function(e) {
+                    console.error('loadVersions error:', e);
+                    document.getElementById('versionsList').innerHTML =
+                        '<div class="empty-state">Failed to load versions</div>';
+                });
+        }
+
+        // ── Select version → show splits or classes ──
+        function selectVersion(name) {
+            selectedVersion = name;
+            selectedSplit = '';
+            selectedClass = '';
+            document.getElementById('imageSection').style.display = 'none';
+
+            var v = null;
+            for (var i = 0; i < versions.length; i++) {
+                if (versions[i].name === name) { v = versions[i]; break; }
+            }
+            if (!v) return;
+            selectedVersionData = v;
+
+            // Highlight card
+            var cards = document.querySelectorAll('.version-card');
+            cards.forEach(function(c) { c.classList.remove('active'); });
+            var idx = versions.indexOf(v);
+            if (cards[idx]) cards[idx].classList.add('active');
+
+            document.getElementById('browserSection').style.display = 'block';
+
+            // If version has splits, show split tabs first
+            var splitTabs = document.getElementById('splitTabs');
+            if (v.splits && v.splits.length > 0) {
+                splitTabs.style.display = 'flex';
+                var tabHtml = '';
+                for (var s = 0; s < v.splits.length; s++) {
+                    tabHtml += '<button class="tab" onclick="selectSplit(\'' + v.splits[s] + '\')">' + v.splits[s] + '</button>';
+                }
+                splitTabs.innerHTML = tabHtml;
+                document.getElementById('browserTitle').textContent = v.name + ' — Select a split';
+                document.getElementById('browserSubtitle').textContent = v.total_images + ' total images across ' + v.splits.length + ' splits';
+                document.getElementById('classGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Select a split above to browse classes</div>';
+            } else {
+                // Flat structure — show classes directly
+                splitTabs.style.display = 'none';
+                showClasses(v, '');
+            }
+        }
+
+        function selectSplit(splitName) {
+            selectedSplit = splitName;
+            selectedClass = '';
+            document.getElementById('imageSection').style.display = 'none';
+
+            // Highlight split tab
+            var tabs = document.querySelectorAll('#splitTabs .tab');
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            tabs.forEach(function(t) {
+                if (t.textContent === splitName) t.classList.add('active');
+            });
+
+            showClasses(selectedVersionData, splitName);
+        }
+
+        function showClasses(v, split) {
+            var title = v.name;
+            if (split) title += ' / ' + split;
+            title += ' — Classes';
+            document.getElementById('browserTitle').textContent = title;
+
+            // For split-based, we need to fetch per-split counts dynamically
+            // For now, use the version class_counts (aggregated across splits)
+            var counts = v.class_counts || {};
+            var classes = Object.keys(counts).sort();
+            document.getElementById('browserSubtitle').textContent = '';
+
+            if (classes.length === 0) {
+                document.getElementById('classGrid').innerHTML =
+                    '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">📂</div>No classes found</div>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < classes.length; i++) {
+                var escapedCls = classes[i].replace(/'/g, "\\'");
+                html += '<div class="class-card" onclick="selectClass(\'' + escapedCls + '\')">';
+                html += '<div class="class-card-name">' + classes[i] + '</div>';
+                html += '<div class="class-card-count">' + (counts[classes[i]] || 0) + '</div>';
+                html += '</div>';
+            }
+            document.getElementById('classGrid').innerHTML = html;
+        }
+
+        // ── Select class → show images ──
+        function selectClass(cls) {
+            selectedClass = cls;
+            var cards = document.querySelectorAll('.class-card');
+            cards.forEach(function(c) { c.classList.remove('active'); });
+            cards.forEach(function(c) {
+                if (c.querySelector('.class-card-name').textContent === cls) c.classList.add('active');
+            });
+            document.getElementById('imageSection').style.display = 'block';
+            loadVersionImages(selectedVersion, selectedSplit, cls, 1);
+        }
+
+        function loadVersionImages(version, split, cls, page) {
+            page = page || 1;
+            currentPage = page;
+            var titlePrefix = cls;
+            if (split) titlePrefix = split + ' / ' + cls;
+            document.getElementById('imageSectionTitle').textContent = titlePrefix;
+
+            var url = '/classifier/api/dataset/images/?version=' + encodeURIComponent(version) +
+                '&class=' + encodeURIComponent(cls) +
+                '&page=' + page + '&per_page=30&_=' + Date.now();
+            if (split) url += '&split=' + encodeURIComponent(split);
+
+            fetch(url)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    document.getElementById('imageSectionCount').textContent = data.total + ' images';
+                    var grid = document.getElementById('imageGrid');
+
+                    if (data.images.length === 0) {
+                        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">📂</div>No images</div>';
+                        document.getElementById('pagination').style.display = 'none';
+                        return;
+                    }
+
+                    var html = '';
+                    for (var i = 0; i < data.images.length; i++) {
+                        var img = data.images[i];
+                        var imgUrl = '/' + img.path;
+                        html += '<div>';
+                        html += '<img class="img-thumb" src="' + imgUrl + '" onclick="openLightbox(\'' + imgUrl + '\')" onerror="this.style.background=\'#eee\'" alt="">';
+                        html += '<div class="img-name">' + img.filename + '</div>';
+                        html += '</div>';
+                    }
+                    grid.innerHTML = html;
+
+                    var pag = document.getElementById('pagination');
+                    if (data.pages > 1) {
+                        pag.style.display = 'flex';
+                        document.getElementById('pageInfo').textContent = 'Page ' + data.page + ' of ' + data.pages;
+                        document.getElementById('prevBtn').disabled = data.page <= 1;
+                        document.getElementById('nextBtn').disabled = data.page >= data.pages;
+                    } else {
+                        pag.style.display = 'none';
+                    }
+                })
+                .catch(function(e) {
+                    console.error('loadVersionImages error:', e);
+                    document.getElementById('imageGrid').innerHTML =
+                        '<div class="empty-state" style="grid-column:1/-1;">Failed to load images</div>';
+                });
+        }
+
+        // ── Register existing version ──
+        function showRegisterModal() {
+            document.getElementById('registerModal').classList.add('active');
+            document.getElementById('registerName').value = '';
+            document.getElementById('registerNotes').value = '';
+            document.getElementById('registerStatus').textContent = '';
+            document.getElementById('registerBtn').disabled = false;
+            document.getElementById('registerBtn').textContent = 'Register';
+        }
+        function closeRegisterModal(e) {
+            if (!e || e.target === document.getElementById('registerModal')) {
+                document.getElementById('registerModal').classList.remove('active');
+            }
+        }
+        function registerVersion() {
+            var name = document.getElementById('registerName').value.trim();
+            var notes = document.getElementById('registerNotes').value.trim();
+            var parent = document.getElementById('registerParent').value;
+
+            if (!name) { alert('Please enter the folder name (e.g. v1)'); return; }
+
+            var btn = document.getElementById('registerBtn');
+            var status = document.getElementById('registerStatus');
+            btn.disabled = true;
+            btn.textContent = 'Scanning…';
+            status.textContent = 'Scanning folder and creating class records…';
+
+            fetch('/classifier/api/dataset/register-version/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, notes: notes, parent: parent })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) {
+                    alert(result.data.error || 'Failed to register version');
+                    btn.disabled = false;
+                    btn.textContent = 'Register';
+                    status.textContent = '';
+                    return;
+                }
+                var d = result.data;
+                status.textContent = '✓ Registered "' + d.name + '": ' + d.total_images + ' images, ' +
+                    Object.keys(d.class_counts).length + ' classes' +
+                    (d.classes_created.length ? ' (' + d.classes_created.length + ' new classes)' : '') +
+                    (d.splits.length ? ', splits: ' + d.splits.join(', ') : '');
+                btn.textContent = 'Done';
+                setTimeout(function() {
+                    closeRegisterModal();
+                    loadVersions();
+                }, 1200);
+            })
+            .catch(function(e) {
+                console.error('registerVersion error:', e);
+                alert('Failed to register version');
+                btn.disabled = false;
+                btn.textContent = 'Register';
+                status.textContent = '';
+            });
+        }
+
+        // ── Create version ──
+        function showCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+            document.getElementById('versionName').value = '';
+            document.getElementById('versionNotes').value = '';
+            document.getElementById('createStatus').textContent = '';
+            document.getElementById('createBtn').disabled = false;
+            document.getElementById('createBtn').textContent = 'Create Version';
+        }
+
+        function closeCreateModal(e) {
+            if (!e || e.target === document.getElementById('createModal')) {
+                document.getElementById('createModal').classList.remove('active');
+            }
+        }
+
+        function activateVersion(name) {
+            if (!confirm('Set "' + name + '" as the active version for training?')) return;
+            fetch('/classifier/api/dataset/set-active/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) {
+                    alert(result.data.error || 'Failed to activate version');
+                    return;
+                }
+                loadVersions();
+            })
+            .catch(function(e) {
+                console.error('activateVersion error:', e);
+                alert('Failed to activate version');
+            });
+        }
+
+        function createVersion() {
+            var name = document.getElementById('versionName').value.trim();
+            var parent = document.getElementById('versionParent').value;
+            var notes = document.getElementById('versionNotes').value.trim();
+
+            if (!name) { alert('Please enter a version name.'); return; }
+
+            var btn = document.getElementById('createBtn');
+            var status = document.getElementById('createStatus');
+            btn.disabled = true;
+            btn.textContent = 'Creating…';
+            status.textContent = 'Linking dataset entries and adding staged images…';
+
+            fetch('/classifier/api/dataset/create-version/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, parent: parent, notes: notes })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(result) {
+                if (!result.ok) {
+                    alert(result.data.error || 'Failed to create version');
+                    btn.disabled = false;
+                    btn.textContent = 'Create Version';
+                    status.textContent = '';
+                    return;
+                }
+                status.textContent = '✓ Created "' + result.data.name + '" with ' + result.data.total_images + ' images (' + (result.data.inherited || 0) + ' inherited, ' + result.data.staged_added + ' staged)';
+                btn.textContent = 'Done';
+                setTimeout(function() {
+                    closeCreateModal();
+                    loadVersions();
+                    selectVersion(result.data.name);
+                }, 1000);
+            })
+            .catch(function(e) {
+                console.error('createVersion error:', e);
+                alert('Failed to create version');
+                btn.disabled = false;
+                btn.textContent = 'Create Version';
+                status.textContent = '';
+            });
+        }
+
+        // ── Lightbox ──
+        function openLightbox(url) {
+            document.getElementById('lightboxImg').src = url;
+            document.getElementById('lightbox').classList.add('active');
+        }
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closeLightbox(); closeCreateModal(); closeRegisterModal(); }
+        });
+
+        // Init
+        loadVersions();
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Cardboard
+Food Organics
+Glass
+Metal
+Paper
+Plastic
+Textile Trash
+Vegetation
+
