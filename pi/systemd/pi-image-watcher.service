@@ -1,0 +1,26 @@
+[Unit]
+Description=Raspberry Pi Real-time Image Watcher Service
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=dhruba001
+Group=dhruba001
+WorkingDirectory=/home/dhruba001
+ExecStart=/home/dhruba001/wastex_venv/bin/python /home/dhruba001/image_watcher.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pi-image-watcher
+
+# Security
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

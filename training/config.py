@@ -44,8 +44,10 @@ from django.conf import settings
 # ── Paths ───────────────────────────────────────────────────────────────────
 
 BASE_DIR: Path = Path(settings.BASE_DIR)
-DATASETS_ROOT: Path = BASE_DIR / "datasets"
-MODELS_ROOT: Path = BASE_DIR / "models"
+
+# Use settings for roots if available, fallback to defaults
+DATASETS_ROOT: Path = getattr(settings, 'DATASETS_ROOT', BASE_DIR / "datasets")
+MODELS_ROOT: Path = getattr(settings, 'MODELS_ROOT', BASE_DIR / "models")
 MODEL_VERSIONS_DIR: Path = MODELS_ROOT / "versions"
 
 # The original shipped model (used as fallback for fine-tuning)

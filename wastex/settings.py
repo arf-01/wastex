@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-g9_@&rvo34_so)n9=$@g-(ql_qm8r@(ml8)ngdvcslw33eea+s
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts (OK for development)
 
 
 # Application definition
@@ -121,12 +122,46 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# Media files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# ── Storage Configuration ────────────────────────────────────────────────
+# These paths are configured during installation and stored in the database
+# (AppSettings table). They can be overridden by environment variables for
+# backward compatibility.
 
-# Datasets
-DATASETS_ROOT = BASE_DIR / 'datasets'
+def get_storage_path(env_key: str, db_key: str, default_folder: str) -> Path:
+    """Get storage path from environment variable or database.
+    
+    Priority:
+    1. Environment variable (for development/testing)
+    2. Database AppSettings (set during installation)
+    3. Default (fallback)
+    """
+    # Try environment variable first
+    env_value = os.getenv(env_key)
+    if env_value:
+        return Path(env_value)
+    
+    # Try database (if app is initialized)
+    try:
+        from classifier.models import AppSettings
+        db_value = AppSettings.get(db_key)
+        if db_value:
+            return Path(db_value)
+    except Exception:
+        # Database not ready yet (migrations not run)
+        pass
+    
+    # Fallback to default
+    return BASE_DIR / default_folder
+
+# Media files (uploaded images)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = get_storage_path('WASTE_MEDIA_ROOT', 'media_root', 'media')
+
+# Datasets (training data)
+DATASETS_ROOT = get_storage_path('WASTE_DATASETS_ROOT', 'datasets_root', 'datasets')
+
+# Trained Models (ML model checkpoints)
+MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', 'models_root', 'models')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

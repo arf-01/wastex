@@ -46,7 +46,8 @@ models/*.pth
 models/*.h5
 models/*.pkl
 models/*.joblib
-models/versions/
+models/versions/*
+!models/versions/.gitkeep
 models/*.weights.h5
 
 # Datasets (too large for git)

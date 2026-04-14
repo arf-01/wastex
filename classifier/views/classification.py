@@ -43,9 +43,14 @@ def classify(request):
 
     image_file = request.FILES["image"]
 
-    if image_file.content_type not in ALLOWED_CONTENT_TYPES:
+    content_type = image_file.content_type
+    if not content_type:
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(image_file.name)
+    
+    if content_type not in ALLOWED_CONTENT_TYPES:
         return JsonResponse(
-            {"error": f"Unsupported file type: {image_file.content_type}"},
+            {"error": f"Unsupported file type: {content_type}"},
             status=400,
         )
 

@@ -514,3 +514,81 @@ class TrainingRun(models.Model):
         )
         self.is_active_model = True
         self.save(update_fields=['is_active_model'])
+
+
+# ── Application Settings (Installation Configuration) ──────────────────────
+
+class AppSettings(models.Model):
+    """Store configurable application settings set during installation.
+
+    Used to store user-selected paths for:
+    - Media root (where uploaded images are stored)
+    - Datasets root (where training datasets are organized)
+    - Models root (where trained models are saved)
+
+    These are set once during installation and are read-only thereafter.
+
+    Attributes:
+        key:         Setting name (e.g., 'media_root', 'datasets_root')
+        value:       Setting value (e.g., 'D:/WasteData/media')
+        description: Human-readable description
+        created_at:  When setting was created
+        updated_at:  When setting was last modified
+    """
+
+    key = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Setting key (e.g., 'media_root')"
+    )
+    value = models.TextField(
+        help_text="Setting value (e.g., '/path/to/folder')"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Description of what this setting controls"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "App Setting"
+        verbose_name_plural = "App Settings"
+
+    def __str__(self):
+        return f"{self.key} = {self.value}"
+
+    @classmethod
+    def get(cls, key: str, default=None):
+        """Get a setting value, return default if not found.
+
+        Args:
+            key: Setting name
+            default: Value to return if not found
+
+        Returns:
+            Setting value or default
+        """
+        try:
+            setting = cls.objects.get(key=key)
+            return setting.value
+        except cls.DoesNotExist:
+            return default
+
+    @classmethod
+    def set(cls, key: str, value: str, description: str = ""):
+        """Set or update a setting value.
+
+        Args:
+            key: Setting name
+            value: New value
+            description: Optional description
+
+        Returns:
+            AppSettings instance
+        """
+        obj, created = cls.objects.update_or_create(
+            key=key,
+            defaults={'value': value, 'description': description}
+        )
+        return obj

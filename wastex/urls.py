@@ -10,10 +10,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import include, path
+from classifier.views.pi_api import api_pi_inference, api_pi_health
 
 urlpatterns = [
     path("", lambda r: redirect("/classifier/dashboard/")),
     path("classifier/", include("classifier.urls")),
+    path("api/pi/health/", api_pi_health),
+    path("api/pi/inference/", api_pi_inference),
     path("admin/", admin.site.urls),
 ]
 

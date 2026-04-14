@@ -14,3 +14,6 @@ tensorflow>=2.15.0
 # Training pipeline
 matplotlib>=3.8.0
 scikit-learn>=1.4.0
+
+# Configuration
+python-dotenv

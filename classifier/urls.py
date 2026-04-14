@@ -14,6 +14,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from . import views
+from .views.pi_api import api_pi_inference, api_pi_health
 
 urlpatterns = [
     # Root redirect
@@ -53,4 +54,9 @@ urlpatterns = [
     path("api/training/status/", views.api_training_status, name="api_training_status"),
     path("api/training/history/", views.api_training_history, name="api_training_history"),
     path("api/training/promote/", views.api_training_promote, name="api_training_promote"),
+
+    # ── Raspberry Pi Inference (Simple, reuses existing classify logic) ──
+    path("api/pi/health/", api_pi_health, name="api_pi_health"),
+    path("api/pi/inference/", api_pi_inference, name="api_pi_inference"),
 ]
+
