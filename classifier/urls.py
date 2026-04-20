@@ -17,15 +17,14 @@ from . import views
 from .views.pi_api import api_pi_inference, api_pi_health
 
 urlpatterns = [
-    # Root redirect
-    path("", lambda r: redirect("dashboard")),
+    # ── Edge Pages ──────────────────────────────────────────────────────
+    path("edge/dashboard/", views.dashboard, name="edge_dashboard"),
+    path("edge/upload/", views.upload, name="edge_upload"),
+    path("edge/inspect/", views.inspect, name="edge_inspect"),
 
-    # ── Page views ──────────────────────────────────────────────────────
-    path("dashboard/", views.dashboard, name="dashboard"),
-    path("upload/", views.upload, name="upload"),
-    path("inspect/", views.inspect, name="inspect"),
-    path("dataset/", views.dataset_view, name="dataset"),
-    path("training/", views.training_view, name="training"),
+    # ── Master Pages ────────────────────────────────────────────────────
+    path("master/dataset/", views.dataset_view, name="master_dataset"),
+    path("master/training/", views.training_view, name="master_training"),
 
     # ── Classification ──────────────────────────────────────────────────
     path("classify/", views.classify, name="classify"),

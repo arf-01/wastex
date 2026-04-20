@@ -1,4 +1,4 @@
-{% extends "classifier/base.html" %}
+{% extends "classifier/base_master.html" %}
 
 {% block title %}Dataset{% endblock %}
 {% block topbar_title %}Dataset{% endblock %}
@@ -198,7 +198,7 @@
     var versions = [], selectedVersion = '', selectedVersionData = null, selectedSplit = '', selectedClass = '', currentPage = 1;
 
     function loadVersions() {
-        fetch('/classifier/api/dataset/versions/?_=' + Date.now())
+        fetch('/api/dataset/versions/?_=' + Date.now())
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 versions = data.versions;
@@ -282,7 +282,7 @@
         page = page || 1; currentPage = page;
         var titlePrefix = cls; if (split) titlePrefix = split + ' / ' + cls;
         document.getElementById('imageSectionTitle').textContent = titlePrefix;
-        var url = '/classifier/api/dataset/images/?version=' + encodeURIComponent(version) + '&class=' + encodeURIComponent(cls) + '&page=' + page + '&per_page=30&_=' + Date.now();
+        var url = '/api/dataset/images/?version=' + encodeURIComponent(version) + '&class=' + encodeURIComponent(cls) + '&page=' + page + '&per_page=30&_=' + Date.now();
         if (split) url += '&split=' + encodeURIComponent(split);
         fetch(url).then(function(r) { return r.json(); }).then(function(data) {
             document.getElementById('imageSectionCount').textContent = data.total + ' images';
@@ -309,7 +309,7 @@
         if (!name) { showToast('Please enter the folder name', 'error'); return; }
         var btn = document.getElementById('registerBtn'), status = document.getElementById('registerStatus');
         btn.disabled = true; btn.textContent = 'Scanning…'; status.textContent = 'Scanning folder and creating class records…';
-        fetch('/classifier/api/dataset/register-version/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, notes: notes, parent: parent }) })
+        fetch('/api/dataset/register-version/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, notes: notes, parent: parent }) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(result) {
             if (!result.ok) { showToast(result.data.error || 'Failed to register version', 'error'); btn.disabled = false; btn.textContent = 'Register'; status.textContent = ''; return; }
@@ -329,7 +329,7 @@
 
     function activateVersion(name) {
         if (!confirm('Set "' + name + '" as the active version for training?')) return;
-        fetch('/classifier/api/dataset/set-active/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
+        fetch('/api/dataset/set-active/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(result) { if (!result.ok) { showToast(result.data.error || 'Failed to activate version', 'error'); return; } showToast('Version activated', 'success'); loadVersions(); })
         .catch(function(e) { console.error('activateVersion error:', e); showToast('Failed to activate version', 'error'); });
@@ -340,7 +340,7 @@
         if (!name) { showToast('Please enter a version name', 'error'); return; }
         var btn = document.getElementById('createBtn'), status = document.getElementById('createStatus');
         btn.disabled = true; btn.textContent = 'Creating…'; status.textContent = 'Linking dataset entries and adding staged images…';
-        fetch('/classifier/api/dataset/create-version/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, parent: parent, notes: notes }) })
+        fetch('/api/dataset/create-version/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, parent: parent, notes: notes }) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(result) {
             if (!result.ok) { showToast(result.data.error || 'Failed to create version', 'error'); btn.disabled = false; btn.textContent = 'Create Version'; status.textContent = ''; return; }

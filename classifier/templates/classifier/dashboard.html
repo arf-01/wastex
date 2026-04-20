@@ -1,10 +1,10 @@
-{% extends "classifier/base.html" %}
+{% extends "classifier/base_edge.html" %}
 
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle" id="lastUpdated"></span>{% endblock %}
 {% block topbar_right %}
-    <a href="{% url 'upload' %}" class="btn btn-primary btn-sm">📷 Classify Image</a>
+    <a href="{% url 'edge_upload' %}" class="btn btn-primary btn-sm">📷 Classify Image</a>
 {% endblock %}
 
 {% block extra_css %}
@@ -84,7 +84,7 @@
             <h2>♻️ Classify an Image</h2>
             <p>Upload a waste image to classify it or detect out-of-distribution samples</p>
         </div>
-        <a href="{% url 'upload' %}" class="btn btn-primary">Upload &amp; Classify</a>
+        <a href="{% url 'edge_upload' %}" class="btn btn-primary">Upload &amp; Classify</a>
     </div>
 
     <!-- Filter Bar -->
@@ -146,7 +146,7 @@
                 <h2>OOD Detections</h2>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span class="badge" id="oodBadge">0</span>
-                    <a href="{% url 'inspect' %}" class="btn btn-sm">Inspect</a>
+                    <a href="{% url 'edge_inspect' %}" class="btn btn-sm">Inspect</a>
                 </div>
             </div>
             <div>
@@ -194,7 +194,7 @@
 
     function loadCounts() {
         var params = getFilterParams();
-        fetch('/classifier/api/counts/?_=' + Date.now() + params)
+        fetch('/api/counts/?_=' + Date.now() + params)
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 var counts = data.counts, total = data.total, values = [];
@@ -229,7 +229,7 @@
     function loadOOD(page) {
         page = page || 1; currentOodPage = page;
         var params = getFilterParams();
-        fetch('/classifier/api/ood/?page=' + page + '&per_page=15&_=' + Date.now() + params)
+        fetch('/api/ood/?page=' + page + '&per_page=15&_=' + Date.now() + params)
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 document.getElementById('oodCount').textContent = data.total;

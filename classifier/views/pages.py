@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import json
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET
 
 from .helpers import get_all_class_names
+from django.contrib.auth.decorators import login_required
+from classifier.decorators import edge_required, master_required
 
 
 def _page_context(active_page: str) -> dict:
@@ -21,31 +23,48 @@ def _page_context(active_page: str) -> dict:
         "active_page": active_page,
     }
 
+@login_required
+def root_redirect(request):
+    if request.user.is_superuser or request.user.groups.filter(name='EdgeUsers').exists():
+        return redirect('edge_dashboard')
+    elif request.user.groups.filter(name='MasterUsers').exists():
+        return redirect('master_dataset')
+    return redirect('edge_dashboard')  # Fallback
 
+@login_required
+@edge_required
 @require_GET
 def dashboard(request):
     """Render the main dashboard page."""
     return render(request, "classifier/dashboard.html", _page_context("dashboard"))
 
 
+@login_required
+@edge_required
 @require_GET
 def upload(request):
     """Render the image upload / classification page."""
     return render(request, "classifier/upload.html", _page_context("upload"))
 
 
+@login_required
+@edge_required
 @require_GET
 def inspect(request):
     """Render the OOD image inspection / labelling page."""
     return render(request, "classifier/inspect.html", _page_context("inspect"))
 
 
+@login_required
+@master_required
 @require_GET
 def dataset_view(request):
     """Render the dataset version browser page."""
     return render(request, "classifier/dataset.html", _page_context("dataset"))
 
 
+@login_required
+@master_required
 @require_GET
 def training_view(request):
     """Render the training management page."""

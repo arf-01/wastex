@@ -1,10 +1,10 @@
-{% extends "classifier/base.html" %}
+{% extends "classifier/base_master.html" %}
 
 {% block title %}Training{% endblock %}
 {% block topbar_title %}Training{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle">Start, monitor, and manage training runs</span>{% endblock %}
 {% block topbar_right %}
-    <a href="{% url 'dataset' %}" class="btn btn-sm">📂 Dataset</a>
+    <a href="{% url 'master_dataset' %}" class="btn btn-sm">📂 Dataset</a>
 {% endblock %}
 
 {% block extra_css %}
@@ -207,7 +207,7 @@
     }
 
     function loadVersions() {
-        fetch('/classifier/api/dataset/versions/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/dataset/versions/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
             var sel = document.getElementById('cfgDatasetVersion');
             sel.innerHTML = '<option value="">Use active version</option>';
             var versions = data.versions || [];
@@ -235,7 +235,7 @@
         body.early_stopping_patience = parseInt(document.getElementById('cfgPatience').value) || 8;
         body.auto_promote = document.getElementById('cfgAutoPromote').checked;
         body.notes = document.getElementById('cfgNotes').value || '';
-        fetch('/classifier/api/training/start/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        fetch('/api/training/start/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(res) {
             btn.disabled = false; btn.textContent = '▶ Start Training';
@@ -246,7 +246,7 @@
     }
 
     function pollStatus() {
-        fetch('/classifier/api/training/status/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/training/status/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
             var banner = document.getElementById('statusBanner'), btnStart = document.getElementById('startBtn');
             if (data.training_running) { isTraining = true; btnStart.disabled = true; btnStart.textContent = 'Training in Progress…'; }
             else { if (isTraining) loadHistory(); isTraining = false; btnStart.disabled = false; btnStart.textContent = '▶ Start Training'; }
@@ -287,7 +287,7 @@
     function startPolling() { pollStatus(); if (pollTimer) clearInterval(pollTimer); pollTimer = setInterval(pollStatus, 5000); }
 
     function loadHistory() {
-        fetch('/classifier/api/training/history/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
+        fetch('/api/training/history/?_=' + Date.now()).then(function(r) { return r.json(); }).then(function(data) {
             historyCache = data.runs || []; document.getElementById('historyCount').textContent = data.count || 0;
             var tbody = document.getElementById('historyBody');
             if (historyCache.length === 0) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">📋</div>No training runs yet.<br>Start your first training run from the form.</div></td></tr>'; return; }
@@ -323,7 +323,7 @@
 
     function promoteRun(runName) {
         if (!confirm('Promote "' + runName + '" to the active model?\n\nThis will replace the currently serving model.')) return;
-        fetch('/classifier/api/training/promote/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_name: runName }) })
+        fetch('/api/training/promote/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_name: runName }) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(res) { if (!res.ok) { showToast(res.data.error || 'Promote failed', 'error'); return; } showToast('Model promoted: ' + runName, 'success'); loadHistory(); })
         .catch(function(e) { showToast('Network error: ' + e.message, 'error'); });

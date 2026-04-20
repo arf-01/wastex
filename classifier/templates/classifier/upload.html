@@ -1,4 +1,4 @@
-{% extends "classifier/base.html" %}
+{% extends "classifier/base_edge.html" %}
 
 {% block title %}Classify{% endblock %}
 {% block topbar_title %}Classify Image{% endblock %}
@@ -113,7 +113,7 @@
         const formData = new FormData();
         formData.append('image', selectedFile);
         try {
-            const res = await fetch('/classifier/classify/', { method: 'POST', body: formData });
+            const res = await fetch('/classify/', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.error) { showToast(data.error, 'error'); } else { showResult(data); }
         } catch (e) { showToast('Request failed. Is the server running?', 'error'); }

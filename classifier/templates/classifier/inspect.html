@@ -1,10 +1,10 @@
-{% extends "classifier/base.html" %}
+{% extends "classifier/base_edge.html" %}
 
 {% block title %}Inspect OOD{% endblock %}
 {% block topbar_title %}Inspect OOD{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle">Review and label out-of-distribution detections</span>{% endblock %}
 {% block topbar_right %}
-    <a href="{% url 'dataset' %}" class="btn btn-sm">📂 Dataset</a>
+    <!-- Removed dataset link for Edge users -->
 {% endblock %}
 
 {% block extra_css %}
@@ -106,7 +106,7 @@
 
     function loadImages(page) {
         page = page || 1; currentPage = page;
-        var url = '/classifier/api/ood/?page=' + page + '&per_page=12&_=' + Date.now();
+        var url = '/api/ood/?page=' + page + '&per_page=12&_=' + Date.now();
         if (currentFilter === 'pending') url += '&reviewed=false';
         else if (currentFilter === 'reviewed') url += '&reviewed=true';
         fetch(url).then(function(res) { return res.json(); }).then(function(data) {
@@ -141,7 +141,7 @@
             else { pag.style.display = 'none'; }
         }).catch(function(e) { console.error('loadImages error:', e); document.getElementById('imageGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Failed to load images</div>'; });
         if (currentFilter !== 'all') {
-            fetch('/classifier/api/ood/?page=1&per_page=1&_=' + Date.now()).then(function(res) { return res.json(); }).then(function(data) {
+            fetch('/api/ood/?page=1&per_page=1&_=' + Date.now()).then(function(res) { return res.json(); }).then(function(data) {
                 if (data.unreviewed !== undefined) { document.getElementById('tabAllCount').textContent = data.total; document.getElementById('tabPendingCount').textContent = data.unreviewed; document.getElementById('tabReviewedCount').textContent = data.total - data.unreviewed; }
             });
         }
@@ -189,7 +189,7 @@
     }
 
     function markReview(imageId, reviewed, idx) {
-        fetch('/classifier/api/ood/' + imageId + '/review/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewed: reviewed }) })
+        fetch('/api/ood/' + imageId + '/review/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reviewed: reviewed }) })
         .then(function(res) { return res.json(); }).then(function(data) {
             if (imageCache[idx]) imageCache[idx].reviewed = data.reviewed;
             showDetail(idx); loadImages(currentPage); showToast('Marked as reviewed', 'success');
@@ -207,7 +207,7 @@
         if (sel.value === '__new__') { label = inp.value.trim(); if (!label) { showToast('Please enter a class name', 'error'); inp.focus(); return; } }
         else label = sel.value;
         if (!label) { showToast('Please select or enter a class label', 'error'); return; }
-        fetch('/classifier/api/ood/' + imageId + '/label/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: label }) })
+        fetch('/api/ood/' + imageId + '/label/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: label }) })
         .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
         .then(function(result) {
             if (!result.ok) { showToast(result.data.error || 'Failed to label image', 'error'); return; }

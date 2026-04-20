@@ -12,9 +12,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file (if it exists)
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -128,29 +132,11 @@ STATIC_URL = 'static/'
 # backward compatibility.
 
 def get_storage_path(env_key: str, db_key: str, default_folder: str) -> Path:
-    """Get storage path from environment variable or database.
-    
-    Priority:
-    1. Environment variable (for development/testing)
-    2. Database AppSettings (set during installation)
-    3. Default (fallback)
-    """
-    # Try environment variable first
+    """Get storage path from environment variable."""
     env_value = os.getenv(env_key)
     if env_value:
         return Path(env_value)
     
-    # Try database (if app is initialized)
-    try:
-        from classifier.models import AppSettings
-        db_value = AppSettings.get(db_key)
-        if db_value:
-            return Path(db_value)
-    except Exception:
-        # Database not ready yet (migrations not run)
-        pass
-    
-    # Fallback to default
     return BASE_DIR / default_folder
 
 # Media files (uploaded images)
@@ -167,3 +153,6 @@ MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', 'models_root', 'models')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'

@@ -33,25 +33,27 @@ db.sqlite3-journal
 /staticfiles/
 /static/
 
-# ML Models (large files)
-ml_models/*.pt
-ml_models/*.pth
-ml_models/*.h5
-ml_models/*.keras
-ml_models/*.pkl
-ml_models/*.joblib
+# ML Models (large binary files — never commit these)
 models/*.keras
 models/*.pt
 models/*.pth
 models/*.h5
 models/*.pkl
 models/*.joblib
+models/*.weights.h5
 models/versions/*
 !models/versions/.gitkeep
-models/*.weights.h5
 
 # Datasets (too large for git)
 datasets/
+
+# Pi capture output / demo session videos
+*.avi
+pi/scripts/__pycache__/
+
+# Test / scratch files at root level
+test_pi_upload.py
+quick_test.py
 
 # Exported presentations
 *.pptx
@@ -67,6 +69,6 @@ datasets/
 .DS_Store
 Thumbs.db
 
-# Environment
+# Environment — never commit secrets
 .env
 .env.local
