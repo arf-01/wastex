@@ -21,16 +21,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+from django.core.exceptions import ImproperlyConfigured
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g9_@&rvo34_so)n9=$@g-(ql_qm8r@(ml8)ngdvcslw33eea+s'
+# ── Security ─────────────────────────────────────────────────────────────────
+# All secrets MUST be provided via .env — no insecure fallbacks.
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY is not set. Add it to your .env file.\n"
+        "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(50))\""
+    )
 
-ALLOWED_HOSTS = ['*']  # Allow all hosts (OK for development)
+DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
+
+# Comma-separated list of allowed hosts, e.g. "localhost,192.168.1.10"
+_allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
 
 
 # Application definition
@@ -42,6 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework.authtoken',
     'classifier',
 ]
 
@@ -78,14 +87,20 @@ WSGI_APPLICATION = 'wastex.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+_db_password = os.getenv('DB_PASSWORD')
+if _db_password is None:
+    raise ImproperlyConfigured(
+        "DB_PASSWORD is not set. Add it to your .env file."
+    )
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'wastex',       # Replace with your DB name
-        'USER': 'postgres',            # Replace with your PostgreSQL username
-        'PASSWORD': '12345678',        # Replace with your PostgreSQL password
-        'HOST': 'localhost',                # Or your PostgreSQL server address
-        'PORT': '5432',                     # Default PostgreSQL port
+        'NAME': os.getenv('DB_NAME', 'wastex'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': _db_password,
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -155,4 +170,14 @@ MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', 'models_root', 'models')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_REDIRECT_URL = '/'
+
+# Django REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
 LOGOUT_REDIRECT_URL = '/accounts/login/'

@@ -22,9 +22,9 @@
         flex-wrap: wrap; box-shadow: var(--shadow-sm);
     }
     .filter-bar label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .filter-bar input[type="datetime-local"] {
+    .filter-bar input[type="datetime-local"], .filter-bar select {
         border: 1px solid var(--gray-300); border-radius: 4px; padding: 6px 10px;
-        font-size: 13px; font-family: inherit; color: var(--text); background: var(--gray-50);
+        font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface);
     }
     .filter-bar input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
     .filter-sep { width: 1px; height: 24px; background: var(--border); }
@@ -71,6 +71,29 @@
     .modal-img { width: 100%; border-radius: var(--radius-sm); margin-bottom: 16px; background: var(--gray-50); }
     .logits-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
     .logits-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 10px; }
+    .bins-container {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;
+    }
+    .bin-card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
+        display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-sm);
+        cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition); text-decoration: none;
+    }
+    .bin-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
+    .bin-header { display: flex; align-items: center; justify-content: space-between; }
+    .bin-name { font-weight: 600; font-size: 14px; color: var(--text); }
+    .bin-status { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.online { background: var(--green-500); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
+    .status-dot.offline { background: var(--red-400); }
+    .bin-stats { display: flex; gap: 16px; }
+    .bin-stat { display: flex; flex-direction: column; gap: 1px; }
+    .bin-stat-val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+    .bin-stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+    .bin-ood-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+        border-radius: 9999px; font-size: 11px; font-weight: 600; background: #fef3c7; color: #92400e; }
+    .bin-ood-badge.none { background: var(--gray-100); color: var(--text-muted); }
+    .bin-time { font-size: 11px; color: var(--text-muted); }
     @media (max-width: 768px) {
         .upload-cta { flex-direction: column; gap: 12px; align-items: flex-start; }
     }
@@ -89,6 +112,11 @@
 
     <!-- Filter Bar -->
     <div class="filter-bar">
+        <label>Bin</label>
+        <select id="filterBin">
+            <option value="">All Bins</option>
+        </select>
+        <div class="filter-sep"></div>
         <label>From</label>
         <input type="datetime-local" id="filterFrom">
         <label>To</label>
@@ -96,6 +124,12 @@
         <div class="filter-sep"></div>
         <button class="btn btn-sm btn-primary" onclick="applyFilters()">Query</button>
         <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Reset</button>
+    </div>
+
+    <!-- Active Bins -->
+    <h3 style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 12px;">Active Bins</h3>
+    <div class="bins-container" id="binsContainer">
+        <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;"><div class="spinner"></div></div>
     </div>
 
     <!-- Summary Cards -->
@@ -186,10 +220,63 @@
     function getFilterParams() {
         var from = document.getElementById('filterFrom').value;
         var to = document.getElementById('filterTo').value;
+        var bin = document.getElementById('filterBin').value;
         var params = '';
         if (from) params += '&from=' + encodeURIComponent(from);
         if (to) params += '&to=' + encodeURIComponent(to);
+        if (bin) params += '&bin_id=' + encodeURIComponent(bin);
         return params;
+    }
+
+    function loadBins() {
+        fetch('/api/bins/?_=' + Date.now())
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var container = document.getElementById('binsContainer');
+                var select = document.getElementById('filterBin');
+                var selectedBin = select.value;
+
+                if (data.bins.length === 0) {
+                    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">📡</div>No bins connected yet. Check your Pi config.</div>';
+                    return;
+                }
+
+                var html = '';
+                var selectHtml = '<option value="">All Bins</option>';
+
+                data.bins.forEach(function(b) {
+                    var dotClass = b.is_online ? 'online' : 'offline';
+                    var statusText = b.is_online ? 'Online' : 'Offline';
+                    var timeStr = b.last_active ? new Date(b.last_active).toLocaleTimeString() : 'Never';
+                    var oodBadge = b.ood_pending > 0
+                        ? '<span class="bin-ood-badge">⚠ ' + b.ood_pending + ' pending OOD</span>'
+                        : '<span class="bin-ood-badge none">No pending OODs</span>';
+
+                    html += '<div class="bin-card" onclick="selectBin(\'' + b.bin_id + '\')"><div class="bin-header">' +
+                        '<span class="bin-name">📡 ' + b.bin_id + '</span>' +
+                        '<span class="bin-status"><div class="status-dot ' + dotClass + '"></div>' + statusText + '</span>' +
+                    '</div>' +
+                    '<div class="bin-stats">' +
+                        '<div class="bin-stat"><div class="bin-stat-val">' + b.trash_count + '</div><div class="bin-stat-label">Items</div></div>' +
+                        '<div class="bin-stat"><div class="bin-stat-val">' + b.ood_count + '</div><div class="bin-stat-label">OODs</div></div>' +
+                    '</div>' +
+                    oodBadge +
+                    '<div class="bin-time">Last active: ' + timeStr + '</div>' +
+                    '</div>';
+
+                    var sel = (b.bin_id === selectedBin) ? ' selected' : '';
+                    selectHtml += '<option value="' + b.bin_id + '"' + sel + '>' + b.bin_id + ' (' + b.trash_count + ' items)</option>';
+                });
+
+                container.innerHTML = html;
+                select.innerHTML = selectHtml;
+            })
+            .catch(function(e) { console.error('loadBins error:', e); });
+    }
+
+    function selectBin(binId) {
+        document.getElementById('filterBin').value = binId;
+        applyFilters();
     }
 
     function loadCounts() {
@@ -282,10 +369,10 @@
 
     function closeModal(e) { if (!e || e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('active'); }
     function applyFilters() { loadCounts(); loadOOD(1); }
-    function resetFilters() { document.getElementById('filterFrom').value = ''; document.getElementById('filterTo').value = ''; applyFilters(); }
+    function resetFilters() { document.getElementById('filterFrom').value = ''; document.getElementById('filterTo').value = ''; document.getElementById('filterBin').value = ''; applyFilters(); }
 
     function init() {
-        loadCounts(); loadOOD(1);
+        loadBins(); loadCounts(); loadOOD(1);
         document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
     }
     init();

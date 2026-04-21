@@ -2,61 +2,117 @@
 """
 Raspberry Pi Real-time Image Upload Service
 
-This script monitors a folder on the Raspberry Pi for new images
-and automatically uploads them to the backend for inference.
+Monitors a folder for new images and uploads them to the WasteX
+backend for inference using DRF token authentication.
+
+Config file: /etc/wastex/config.ini  (see template below)
+
+    [server]
+    BACKEND_URL = http://192.169.0.111:8000
+
+    [identity]
+    BIN_ID     = bin_cafeteria
+    USER_TOKEN = <paste token from WasteX edge profile page>
 
 Setup:
-1. Place this script on your Raspberry Pi
-2. Install watchdog: pip install watchdog requests
-3. Run: python3 image_watcher.py
-
-Configuration:
-- Modify WATCH_FOLDER to point to your webcam capture folder
-- Modify BACKEND_URL to match your backend server
-- Modify SOURCE_ID to identify this Pi device
+    1. Copy this script to your Raspberry Pi
+    2. Create the config file at /etc/wastex/config.ini
+    3. Install deps:  pip install watchdog requests
+    4. Run:          python3 image_watcher.py
+    5. Or install as a service: see /pi/service/wastex-watcher.service
 """
 
 import os
 import sys
 import time
 import logging
+import configparser
 import requests
 from pathlib import Path
-from datetime import datetime
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CONFIGURATION
+# CONFIGURATION  (loaded from /etc/wastex/config.ini)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Folder to watch for new images (where your webcam script saves images)
-WATCH_FOLDER = "/home/dhruba001/webcam_captures"
+CONFIG_FILE = "/etc/wastex/config.ini"
 
-# Backend server URL (change to your actual backend IP/domain)
-BACKEND_URL = "http://192.169.0.111:8000"  # Windows backend on WiFi
+def load_config():
+    """Load and validate configuration from the config file."""
+    cfg = configparser.ConfigParser()
 
-# Unique identifier for this Raspberry Pi device
-SOURCE_ID = "pi_001"
+    if not os.path.exists(CONFIG_FILE):
+        print(f"❌ Config file not found: {CONFIG_FILE}")
+        print()
+        print("   Create it with the following contents:")
+        print()
+        print("   [server]")
+        print("   BACKEND_URL = http://<your-backend-ip>:8000")
+        print()
+        print("   [identity]")
+        print("   BIN_ID     = bin_<location>")
+        print("   USER_TOKEN = <paste from WasteX Edge → API Key page>")
+        sys.exit(1)
 
-# Image file extensions to watch for
-VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp'}
+    cfg.read(CONFIG_FILE)
 
-# Retry configuration
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds
+    # Required values
+    try:
+        backend_url = cfg["server"]["BACKEND_URL"].rstrip("/")
+        bin_id      = cfg["identity"]["BIN_ID"]
+        user_token  = cfg["identity"]["USER_TOKEN"]
+    except KeyError as e:
+        print(f"❌ Missing config key: {e}")
+        print(f"   Check {CONFIG_FILE} and ensure all keys are present.")
+        sys.exit(1)
 
-# Logging configuration
-LOG_FILE = f"/tmp/pi_image_watcher_{SOURCE_ID}.log"
+    # Optional values with defaults
+    watch_folder   = cfg.get("watcher", "WATCH_FOLDER",  fallback="/home/pi/webcam_captures")
+    max_retries    = int(cfg.get("watcher", "MAX_RETRIES",   fallback="3"))
+    retry_delay    = float(cfg.get("watcher", "RETRY_DELAY",  fallback="2.0"))
+    valid_exts     = {e.strip().lower() for e in
+                      cfg.get("watcher", "VALID_EXTENSIONS",
+                               fallback=".jpg,.jpeg,.png,.bmp").split(",")}
+
+    return {
+        "backend_url":   backend_url,
+        "bin_id":        bin_id,
+        "user_token":    user_token,
+        "watch_folder":  watch_folder,
+        "max_retries":   max_retries,
+        "retry_delay":   retry_delay,
+        "valid_exts":    valid_exts,
+    }
+
+
+# Load config at module level so handler can access it
+CONFIG = load_config()
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# LOGGING
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LOG_FILE = f"/tmp/wastex_watcher_{CONFIG['bin_id']}.log"
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE),
-        logging.StreamHandler()
-    ]
+        logging.StreamHandler(),
+    ],
 )
 logger = logging.getLogger(__name__)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AUTH HEADER HELPER
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def auth_headers() -> dict:
+    """Return the DRF token auth header for this Pi's edge account."""
+    return {"Authorization": f"Token {CONFIG['user_token']}"}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -64,92 +120,91 @@ logger = logging.getLogger(__name__)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 class ImageUploadHandler(FileSystemEventHandler):
-    """Watch folder and upload new images to backend."""
-    
+    """Watch a folder and upload new images to the WasteX backend."""
+
     def on_created(self, event):
-        """Called when a new file is created in the watched folder."""
+        """Triggered when a new file is created in the watched folder."""
         if event.is_directory:
             return
-        
+
         file_path = event.src_path
-        file_ext = Path(file_path).suffix.lower()
-        
-        # Only process image files
-        if file_ext not in VALID_EXTENSIONS:
+        if Path(file_path).suffix.lower() not in CONFIG["valid_exts"]:
             return
-        
-        # Small delay to ensure file is fully written
+
+        # Small delay — ensures the file is fully written before we open it
         time.sleep(0.5)
-        
+
         logger.info(f"📷 New image detected: {file_path}")
         self.upload_image(file_path)
-    
-    def upload_image(self, file_path):
-        """Upload image to backend for inference."""
-        
-        # Check if file still exists
+
+    def upload_image(self, file_path: str):
+        """Upload image to backend with token auth, retrying on failure."""
         if not os.path.exists(file_path):
-            logger.warning(f"File not found: {file_path}")
+            logger.warning(f"File vanished before upload: {file_path}")
             return
-        
-        # Retry logic
-        for attempt in range(1, MAX_RETRIES + 1):
+
+        for attempt in range(1, CONFIG["max_retries"] + 1):
             try:
-                with open(file_path, 'rb') as image_file:
-                    files = {'image': image_file}
-                    data = {'source': SOURCE_ID}
-                    
-                    # Send to backend
+                with open(file_path, "rb") as f:
                     response = requests.post(
-                        f"{BACKEND_URL}/classifier/api/pi/inference/",
-                        files=files,
-                        data=data,
-                        timeout=30
+                        f"{CONFIG['backend_url']}/classifier/api/pi/inference/",
+                        headers=auth_headers(),
+                        files={"image": f},
+                        data={"source": CONFIG["bin_id"]},
+                        timeout=30,
                     )
-                    
-                    # Check response
-                    if response.status_code == 200:
-                        result = response.json()
-                        logger.info(f"✅ Upload successful!")
-                        logger.info(f"   Predicted Class: {result.get('predicted_class')}")
-                        logger.info(f"   Saved to DB: {result.get('saved_to_db')}")
-                        return  # Success!
-                    else:
-                        logger.error(f"❌ Backend error (attempt {attempt}/{MAX_RETRIES})")
-                        logger.error(f"   Status: {response.status_code}")
-                        logger.error(f"   Response: {response.text}")
-                
+
+                if response.status_code == 200:
+                    result = response.json()
+                    logger.info("✅ Upload successful!")
+                    logger.info(f"   Bin:             {CONFIG['bin_id']}")
+                    logger.info(f"   Predicted class: {result.get('predicted_class')}")
+                    logger.info(f"   Saved to DB:     {result.get('saved_to_db')}")
+                    return
+
+                elif response.status_code == 401:
+                    logger.error("🔒 Authentication failed (401) — check USER_TOKEN in config.ini")
+                    logger.error("   Generate a fresh token at:  <backend>/classifier/edge/api-key/")
+                    return  # No point retrying — auth is wrong
+
+                elif response.status_code == 403:
+                    logger.error("🚫 Permission denied (403) — account may not be in EdgeUsers group")
+                    return
+
+                else:
+                    logger.error(f"❌ Backend error (attempt {attempt}/{CONFIG['max_retries']})")
+                    logger.error(f"   Status:   {response.status_code}")
+                    logger.error(f"   Response: {response.text[:300]}")
+
             except requests.exceptions.ConnectionError:
-                logger.error(f"⚠️  Connection failed (attempt {attempt}/{MAX_RETRIES})")
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY)
-            
+                logger.error(f"⚠️  Connection failed (attempt {attempt}/{CONFIG['max_retries']})")
+
             except Exception as e:
-                logger.error(f"❌ Unexpected error (attempt {attempt}/{MAX_RETRIES})")
-                logger.error(f"   {type(e).__name__}: {str(e)}")
-                if attempt < MAX_RETRIES:
-                    time.sleep(RETRY_DELAY)
-        
-        logger.error(f"💥 Failed to upload after {MAX_RETRIES} attempts: {file_path}")
+                logger.error(f"❌ Unexpected error (attempt {attempt}/{CONFIG['max_retries']}): {e}")
+
+            if attempt < CONFIG["max_retries"]:
+                time.sleep(CONFIG["retry_delay"])
+
+        logger.error(f"💥 Giving up after {CONFIG['max_retries']} attempts: {file_path}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # HEALTH CHECK
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def check_backend_health():
-    """Verify backend is online before starting."""
+def check_backend_health() -> bool:
+    """Verify the backend is online and register bin status."""
     try:
-        response = requests.get(
-            f"{BACKEND_URL}/classifier/api/pi/health/",
-            timeout=5
+        r = requests.get(
+            f"{CONFIG['backend_url']}/classifier/api/pi/health/?source={CONFIG['bin_id']}",
+            headers=auth_headers(),
+            timeout=5,
         )
-        if response.status_code == 200:
-            logger.info("✅ Backend is online and ready!")
+        if r.status_code == 200:
+            logger.info("✅ Backend is online!")
             return True
     except Exception as e:
-        logger.warning(f"⚠️  Backend health check failed: {e}")
-    
+        logger.warning(f"⚠️  Health check failed: {e}")
     return False
 
 
@@ -159,49 +214,43 @@ def check_backend_health():
 
 def main():
     """Start the file watcher service."""
-    
+
     logger.info("=" * 70)
-    logger.info("🚀 Raspberry Pi Image Watcher Service Started")
+    logger.info("🚀 WasteX Pi Image Watcher Service")
     logger.info("=" * 70)
-    
-    # Validate configuration
-    if BACKEND_URL == "http://192.168.x.x:8000":
-        logger.error("❌ ERROR: Please update BACKEND_URL in this script!")
-        logger.error("   Edit the BACKEND_URL variable with your backend's IP address")
-        sys.exit(1)
-    
-    # Create watch folder if it doesn't exist
-    watch_path = Path(WATCH_FOLDER)
+    logger.info(f"   Config:       {CONFIG_FILE}")
+    logger.info(f"   Backend:      {CONFIG['backend_url']}")
+    logger.info(f"   Bin ID:       {CONFIG['bin_id']}")
+    logger.info(f"   Watch folder: {CONFIG['watch_folder']}")
+    logger.info(f"   Auth token:   {CONFIG['user_token'][:8]}…  (truncated)")
+
+    # Create watch folder if needed
+    watch_path = Path(CONFIG["watch_folder"])
     watch_path.mkdir(parents=True, exist_ok=True)
-    logger.info(f"📁 Watching folder: {WATCH_FOLDER}")
-    logger.info(f"🔌 Backend URL: {BACKEND_URL}")
-    logger.info(f"🎯 Source ID: {SOURCE_ID}")
-    
-    # Check backend health
-    logger.info("🔍 Checking backend health...")
+
+    # Health check
+    logger.info("🔍 Checking backend…")
     if not check_backend_health():
-        logger.warning("⚠️  Backend is offline. Will retry uploads when it comes online.")
-    
+        logger.warning("⚠️  Backend offline — will retry uploads when it comes back.")
+
     # Start watching
-    event_handler = ImageUploadHandler()
+    handler  = ImageUploadHandler()
     observer = Observer()
-    observer.schedule(event_handler, watch_path, recursive=False)
-    
+    observer.schedule(handler, watch_path, recursive=False)
+
     try:
         observer.start()
-        logger.info("👀 Watching for new images...")
-        logger.info("Press Ctrl+C to stop")
-        
+        logger.info("👀 Watching for new images… (Ctrl+C to stop)")
         while True:
             time.sleep(1)
-    
+
     except KeyboardInterrupt:
-        logger.info("🛑 Shutting down...")
+        logger.info("🛑 Shutting down…")
         observer.stop()
-    
+
     finally:
         observer.join()
-        logger.info("✅ Watcher stopped")
+        logger.info("✅ Watcher stopped cleanly")
 
 
 if __name__ == "__main__":

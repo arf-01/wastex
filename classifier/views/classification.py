@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from PIL import Image as PILImage
 
 from classifier.model_loader import get_logits
-from classifier.models import Image, TrashCounter
+from classifier.models import Image, TrashItem, Bin
 
 from .helpers import ALLOWED_CONTENT_TYPES, MAX_UPLOAD_SIZE, MODEL_CLASS_NAMES
 
@@ -42,6 +42,20 @@ def classify(request):
         return JsonResponse({"error": "No image file provided."}, status=400)
 
     image_file = request.FILES["image"]
+    
+    # Try to extract and resolve bin from 'source' payload if token auth is used
+    bin_obj = None
+    source = request.POST.get("source")
+    if source and request.user.is_authenticated:
+        try:
+            bin_obj, _ = Bin.objects.get_or_create(
+                user=request.user,
+                bin_id=source
+            )
+            # update last_active
+            bin_obj.save(update_fields=["last_active"])
+        except Exception as e:
+            logger.warning("Failed to resolve bin: %s", e)
 
     content_type = image_file.content_type
     if not content_type:
@@ -94,13 +108,14 @@ def classify(request):
             },
             uploaded_at=timezone.now(),
             classified_at=timezone.now(),
+            bin=bin_obj,
         )
         saved = True
         logger.info("OOD image saved: %s (energy=%.4f)", image_file.name, energy)
     else:
         predicted_class_index = int(np.argmax(logits))
         predicted_class = MODEL_CLASS_NAMES[predicted_class_index]
-        TrashCounter.increment(predicted_class)
+        TrashItem.objects.create(class_name=predicted_class, bin=bin_obj)
         default_storage.delete(file_path)
         logger.info(
             "In-distribution: %s → %s (energy=%.4f)",

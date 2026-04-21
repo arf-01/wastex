@@ -15,6 +15,8 @@ from django.urls import path
 
 from . import views
 from .views.pi_api import api_pi_inference, api_pi_health
+from .views.api_keys import profile as api_key_profile, regenerate_token
+from .views.bin_api import api_bins
 
 urlpatterns = [
     # ── Edge Pages ──────────────────────────────────────────────────────
@@ -29,9 +31,10 @@ urlpatterns = [
     # ── Classification ──────────────────────────────────────────────────
     path("classify/", views.classify, name="classify"),
 
-    # ── Trash counter ───────────────────────────────────────────────────
+    # ── Trash counter & Bins ────────────────────────────────────────────
     path("api/counts/", views.api_trash_counts, name="api_trash_counts"),
     path("api/history/", views.api_trash_history, name="api_trash_history"),
+    path("api/bins/", api_bins, name="api_bins"),
 
     # ── OOD images ──────────────────────────────────────────────────────
     path("api/ood/", views.api_ood_images, name="api_ood_images"),
@@ -57,5 +60,9 @@ urlpatterns = [
     # ── Raspberry Pi Inference (Simple, reuses existing classify logic) ──
     path("api/pi/health/", api_pi_health, name="api_pi_health"),
     path("api/pi/inference/", api_pi_inference, name="api_pi_inference"),
+
+    # ── API Key Management ──────────────────────────────────────────────
+    path("edge/api-key/", api_key_profile, name="api_key_profile"),
+    path("edge/api-key/regenerate/", regenerate_token, name="regenerate_token"),
 ]
 

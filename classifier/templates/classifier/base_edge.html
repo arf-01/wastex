@@ -762,6 +762,11 @@
                 <a href="{% url 'edge_inspect' %}" class="nav-link {% if active_page == 'inspect' %}active{% endif %}">
                     <span class="nav-icon">🔍</span> Inspect OOD
                 </a>
+
+                <div class="sidebar-section">Account</div>
+                <a href="{% url 'api_key_profile' %}" class="nav-link {% if active_page == 'api_key' %}active{% endif %}">
+                    <span class="nav-icon">🔑</span> API Key
+                </a>
             </nav>
 
             <div class="sidebar-footer">

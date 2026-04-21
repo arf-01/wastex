@@ -1,0 +1,271 @@
+{% extends "classifier/base_edge.html" %}
+
+{% block title %}API Key{% endblock %}
+{% block topbar_title %}API Key Management{% endblock %}
+{% block topbar_subtitle %}<div class="topbar-subtitle">Manage your edge device authentication token</div>{% endblock %}
+
+{% block extra_css %}
+.token-box {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    color: var(--gray-800);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    user-select: all;
+}
+.token-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--green-100);
+    color: var(--green-700);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.step-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 13px;
+}
+.step-row:last-child { border-bottom: none; }
+.step-content { flex: 1; }
+.step-title { font-weight: 600; color: var(--gray-800); margin-bottom: 3px; }
+.step-desc { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.code-block {
+    background: var(--gray-900);
+    color: #86efac;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    margin-top: 8px;
+    overflow-x: auto;
+}
+.code-block .comment { color: #6b7280; }
+.token-placeholder { color: #fbbf24; }
+.warning-box {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #92400e;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+.no-token-box {
+    background: var(--gray-50);
+    border: 2px dashed var(--gray-200);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    color: var(--text-muted);
+}
+.no-token-box .icon { font-size: 36px; margin-bottom: 10px; }
+.no-token-box p { font-size: 13px; margin-bottom: 16px; }
+{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;">
+
+    <!-- ── Token Status Card ── -->
+    <div class="panel">
+        <div class="panel-header">
+            <h2>🔑 Your API Token</h2>
+            {% if has_token %}
+            <span class="tag tag-green">Active</span>
+            {% else %}
+            <span class="tag tag-gray">Not Generated</span>
+            {% endif %}
+        </div>
+        <div class="panel-body">
+
+            {% if has_token %}
+            <!-- Token display -->
+            <div class="form-group">
+                <label class="form-label">Token</label>
+                <div class="token-row">
+                    <input
+                        class="token-box"
+                        id="token-input"
+                        type="text"
+                        value="{{ token }}"
+                        readonly
+                        onclick="this.select()"
+                    >
+                    <button class="btn btn-sm" id="copy-btn" onclick="copyToken()">📋 Copy</button>
+                </div>
+                <div class="form-hint">Created {{ token_created|date:"M d, Y · H:i" }} UTC</div>
+            </div>
+
+            <!-- Danger zone: regenerate -->
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+                <div class="warning-box" style="margin-bottom:12px;">
+                    ⚠️ <span>Regenerating your token will immediately break <strong>all Pi devices</strong> using the current token. You will need to update each Pi's config file manually.</span>
+                </div>
+                <button class="btn btn-danger btn-sm" id="regen-btn" onclick="regenerateToken()">
+                    🔄 Regenerate Token
+                </button>
+            </div>
+
+            {% else %}
+            <!-- No token yet -->
+            <div class="no-token-box">
+                <div class="icon">🔐</div>
+                <p>You haven't generated an API token yet.<br>
+                   Click the button below to create one — copy it and paste it into your Pi's config file.</p>
+                <button class="btn btn-primary" id="regen-btn" onclick="regenerateToken()">
+                    🔑 Generate Token
+                </button>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- ── Pi Setup Guide ── -->
+    {% if has_token %}
+    <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+            <h2>🍓 Pi Configuration</h2>
+        </div>
+        <div class="panel-body">
+            <div class="step-row">
+                <span class="step-badge">1</span>
+                <div class="step-content">
+                    <div class="step-title">SSH into your Raspberry Pi</div>
+                    <div class="step-desc">Open a terminal and connect to your Pi.</div>
+                    <div class="code-block">ssh dhruba001@&lt;pi-ip-address&gt;</div>
+                </div>
+            </div>
+            <div class="step-row">
+                <span class="step-badge">2</span>
+                <div class="step-content">
+                    <div class="step-title">Edit the config file</div>
+                    <div class="step-desc">Create or update <code>/etc/wastex/config.ini</code> with your token.</div>
+                    <div class="code-block"><span class="comment"># /etc/wastex/config.ini</span>
+[server]
+BACKEND_URL = http://192.169.0.111:8000
+
+[identity]
+BIN_ID      = bin_cafeteria
+<span class="comment"># Paste your token below:</span>
+USER_TOKEN  = <span class="token-placeholder">{{ token }}</span></div>
+                </div>
+            </div>
+            <div class="step-row">
+                <span class="step-badge">3</span>
+                <div class="step-content">
+                    <div class="step-title">Restart the watcher service</div>
+                    <div class="step-desc">The Pi watcher reads the config at startup.</div>
+                    <div class="code-block">sudo systemctl restart wastex-watcher</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+function copyToken() {
+    const input = document.getElementById('token-input');
+    if (!input) return;
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        showToast('Token copied to clipboard!', 'success');
+        const btn = document.getElementById('copy-btn');
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+    }).catch(() => {
+        document.execCommand('copy');
+        showToast('Token copied!', 'success');
+    });
+}
+
+function regenerateToken() {
+    const hasToken = !!document.getElementById('token-input');
+    if (hasToken && !confirm('⚠️ This will break all Pi devices using the current token.\n\nYou will need to update each Pi\'s config.ini manually.\n\nContinue?')) return;
+
+    const btn = document.getElementById('regen-btn');
+    btn.disabled = true;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner spinner-white spinner-sm"></span> Generating…';
+
+    fetch('{% url "regenerate_token" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast('New token generated!', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.message || 'Failed to generate token', 'error');
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    })
+    .catch(err => {
+        showToast('Request failed: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    });
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<span class="toast-icon">${icons[type]}</span>${message}`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => { requestAnimationFrame(() => { toast.classList.add('show'); }); });
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
+
+function getCookie(name) {
+    let v = null;
+    if (document.cookie) {
+        document.cookie.split(';').forEach(c => {
+            c = c.trim();
+            if (c.startsWith(name + '=')) v = decodeURIComponent(c.slice(name.length + 1));
+        });
+    }
+    return v;
+}
+</script>
+{% endblock %}

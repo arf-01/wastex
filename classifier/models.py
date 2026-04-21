@@ -27,6 +27,7 @@ from django.core.validators import MinLengthValidator
 from django.db import models
 from django.db.models import F
 from django.utils import timezone
+from django.conf import settings
 
 
 # ── Dataset versioning ──────────────────────────────────────────────────────
@@ -326,6 +327,16 @@ class Image(models.Model):
         on_delete=models.SET_NULL,
         related_name='images',
     )
+    
+    # ── Edge Tracking ───────────────────────────────────────────────────
+    bin = models.ForeignKey(
+        'Bin',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='ood_images',
+        help_text='The edge bin that captured this OOD image.'
+    )
 
     # ── Timestamps ──────────────────────────────────────────────────────
     uploaded_at = models.DateTimeField(default=timezone.now, db_index=True)
@@ -361,43 +372,69 @@ class Image(models.Model):
 
 # ── Trash counters (time-series) ────────────────────────────────────────────
 
-class TrashCounter(models.Model):
-    """Running per-class item count, stored as a time-series.
-
-    Each row is a snapshot: *"at <recorded_at>, class X had <total_count>
-    items total"*.  The :meth:`increment` class-method atomically bumps
-    the latest row or creates the first one.
-
-    To query the *current* count for a class, fetch the most recent row::
-
-        TrashCounter.objects.filter(class_name="Plastic").first()
-
-    To query history, order by ``recorded_at``.
+class Bin(models.Model):
+    """A physical edge capture station (e.g. Raspberry Pi) belonging to a user.
+    
+    Tracks the health/activity of the bin and anchors trash detections to it.
     """
-
-    class_name = models.CharField(max_length=100, db_index=True)
-    total_count = models.PositiveIntegerField()
-    recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bins',
+        help_text='The edge user this bin belongs to.'
+    )
+    bin_id = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text='Unique identifier string sent by the edge device.'
+    )
+    last_active = models.DateTimeField(
+        auto_now=True,
+        help_text='Last time this bin communicated with the server.'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
-        db_table = 'trash_counter'
-        ordering = ['-recorded_at']
-        verbose_name = 'Trash counter'
-        verbose_name_plural = 'Trash counters'
+        db_table = 'bins'
+        unique_together = ('user', 'bin_id')
+        verbose_name = 'Bin'
+        verbose_name_plural = 'Bins'
+        ordering = ['-last_active']
 
     def __str__(self) -> str:
-        return f"{self.class_name}: {self.total_count} ({self.recorded_at:%Y-%m-%d %H:%M})"
+        return f"{self.user.username} - {self.bin_id}"
 
-    @classmethod
-    def increment(cls, class_name: str) -> None:
-        """Atomically increment the count for *class_name*.
 
-        Uses ``F()`` expressions to avoid race conditions.  A new row is
-        appended to preserve the time-series history.
-        """
-        last = cls.objects.filter(class_name=class_name).first()
-        new_count = (last.total_count + 1) if last else 1
-        cls.objects.create(class_name=class_name, total_count=new_count)
+class TrashItem(models.Model):
+    """An individual event for a detected piece of trash.
+    
+    By storing one row per item, we avoid race conditions associated with 
+    concurrently updating an integer counter, and we gain rich historical
+    data filtered by bin.
+    """
+    bin = models.ForeignKey(
+        Bin,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='trash_items',
+        help_text='The bin that detected this item (null for manual uploads).'
+    )
+    class_name = models.CharField(max_length=100, db_index=True)
+    recorded_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        db_table = 'trash_items'
+        ordering = ['-recorded_at']
+        verbose_name = 'Trash item event'
+        verbose_name_plural = 'Trash item events'
+        indexes = [
+            models.Index(fields=['class_name', 'recorded_at']),
+        ]
+
+    def __str__(self) -> str:
+        bin_str = self.bin.bin_id if self.bin else "Manual"
+        return f"{self.class_name} detected by {bin_str} at {self.recorded_at:%Y-%m-%d %H:%M}"
 
 
 # ── Training runs ───────────────────────────────────────────────────────────
