@@ -25,10 +25,10 @@ def _page_context(active_page: str) -> dict:
 
 @login_required
 def root_redirect(request):
-    if request.user.is_superuser or request.user.groups.filter(name='EdgeUsers').exists():
-        return redirect('edge_dashboard')
-    elif request.user.groups.filter(name='MasterUsers').exists():
+    if request.user.groups.filter(name='MasterUsers').exists():
         return redirect('master_dataset')
+    elif request.user.groups.filter(name='EdgeUsers').exists() or request.user.is_superuser:
+        return redirect('edge_dashboard')
     return redirect('edge_dashboard')  # Fallback
 
 @login_required
