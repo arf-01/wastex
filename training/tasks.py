@@ -13,7 +13,6 @@ from typing import Optional
 
 from classifier.models import TrainingRun
 from .config import TrainingConfig
-from .runner import run_training
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,7 @@ def start_training(config: TrainingConfig) -> Optional[str]:
 
     def _run():
         try:
+            from .runner import run_training
             run_training(config)
         except Exception:
             logger.exception("Background training failed")
