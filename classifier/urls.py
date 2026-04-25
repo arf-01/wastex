@@ -17,6 +17,7 @@ from . import views
 from .views.pi_api import api_pi_inference, api_pi_health
 from .views.api_keys import profile as api_key_profile, regenerate_token
 from .views.bin_api import api_bins
+from .views import sync_api
 
 urlpatterns = [
     # ── Edge Pages ──────────────────────────────────────────────────────
@@ -64,5 +65,11 @@ urlpatterns = [
     # ── API Key Management ──────────────────────────────────────────────
     path("edge/api-key/", api_key_profile, name="api_key_profile"),
     path("edge/api-key/regenerate/", regenerate_token, name="regenerate_token"),
+
+    # ── Cloud Broker Sync APIs ──────────────────────────────────────────
+    path("api/sync/ood/receive/", sync_api.api_receive_ood, name="sync_receive_ood"),
+    path("api/sync/ood/pending/", sync_api.api_get_pending_images, name="sync_get_pending"),
+    path("api/sync/model/release/", sync_api.api_cloud_release_model, name="sync_release_model"),
+    path("api/sync/model/latest/", sync_api.api_get_latest_release, name="sync_get_latest_model"),
 ]
 

@@ -328,6 +328,13 @@ class Image(models.Model):
         related_name='images',
     )
     
+    # ── Cloud Sync ──────────────────────────────────────────────────────
+    is_synced_to_cloud = models.BooleanField(
+        default=False, 
+        db_index=True,
+        help_text='Whether this labeled OOD image has been pushed to the cloud broker.'
+    )
+    
     # ── Edge Tracking ───────────────────────────────────────────────────
     bin = models.ForeignKey(
         'Bin',
@@ -629,3 +636,72 @@ class AppSettings(models.Model):
             defaults={'value': value, 'description': description}
         )
         return obj
+
+# ── Cloud Broker Ledger (Used on Cloud Role) ────────────────────────────────
+
+class PendingImage(models.Model):
+    """The 'Waiting Room' for OOD images in the cloud.
+    
+    Used by the Cloud Broker to track images pushed from Edge sites that 
+    are waiting to be downloaded by the Master machine.
+    """
+    edge_site_id = models.CharField(
+        max_length=100, 
+        db_index=True,
+        help_text="The source site ID (e.g., NY_Facility_1)"
+    )
+    b2_file_key = models.CharField(
+        max_length=500,
+        help_text="Path in Backblaze B2 (e.g., incoming/ny1/img_99.jpg)"
+    )
+    label = models.CharField(
+        max_length=100,
+        help_text="The operator-assigned label from the Edge site."
+    )
+    is_ready_for_master = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="True once the file upload to B2 is confirmed."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cloud_pending_images'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.edge_site_id} - {self.label} ({self.b2_file_key})"
+
+
+class ModelRelease(models.Model):
+    """Registry of trained models released by the Master machine.
+    
+    Used by Edge sites to poll for and download the latest .keras models.
+    """
+    version_tag = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="e.g., v2.1"
+    )
+    b2_file_key = models.CharField(
+        max_length=500,
+        help_text="Path in Backblaze B2 (e.g., models/v2.1.keras)"
+    )
+    checksum = models.CharField(
+        max_length=128,
+        help_text="SHA256 checksum to verify download integrity."
+    )
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this is the recommended version for Edge sites."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'cloud_model_releases'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Release {self.version_tag} ({'Active' if self.is_active else 'Inactive'})"

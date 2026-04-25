@@ -18,7 +18,13 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file (if it exists)
-load_dotenv(BASE_DIR / '.env')
+load_dotenv(BASE_DIR / '.env', override=True)
+
+# ── Site Configuration ──────────────────────────────────────────────────────
+# Roles: EDGE (on-site), MASTER (Paris training), CLOUD (Broker)
+SITE_ROLE = os.getenv('SITE_ROLE', 'EDGE').upper()
+if SITE_ROLE not in ('EDGE', 'MASTER', 'CLOUD'):
+    raise ImproperlyConfigured(f"Invalid SITE_ROLE: {SITE_ROLE}")
 
 
 from django.core.exceptions import ImproperlyConfigured
@@ -36,7 +42,7 @@ if not SECRET_KEY:
 DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 # Comma-separated list of allowed hosts, e.g. "localhost,192.168.1.10"
-_allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+_allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com')
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
 
 
@@ -84,26 +90,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'wastex.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Database configuration
+# ─────────────────────────────────────────────────────────────────────────────
+import dj_database_url
 
-_db_password = os.getenv('DB_PASSWORD')
-if _db_password is None:
-    raise ImproperlyConfigured(
-        "DB_PASSWORD is not set. Add it to your .env file."
-    )
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'wastex'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': _db_password,
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True if os.getenv('DB_SSL_MODE') == 'require' else False
+        )
     }
-}
-
+else:
+    # Local fallback
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'postgres'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -154,15 +166,46 @@ def get_storage_path(env_key: str, db_key: str, default_folder: str) -> Path:
     
     return BASE_DIR / default_folder
 
-# Media files (uploaded images)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = get_storage_path('WASTE_MEDIA_ROOT', 'media_root', 'media')
-
-# Datasets (training data)
-DATASETS_ROOT = get_storage_path('WASTE_DATASETS_ROOT', 'datasets_root', 'datasets')
-
 # Trained Models (ML model checkpoints)
 MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', 'models_root', 'models')
+
+# ── Cloud Broker Storage (Backblaze B2) ──────────────────────────────────
+MEDIA_ROOT = get_storage_path('WASTE_MEDIA_ROOT', 'media_root', 'media')
+DATASETS_ROOT = get_storage_path('WASTE_DATASETS_ROOT', 'datasets_root', 'datasets')
+
+if SITE_ROLE == 'CLOUD':
+    # Cloud Broker configuration (Backblaze B2)
+    AWS_ACCESS_KEY_ID = os.getenv('B2_APPLICATION_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('B2_APPLICATION_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('B2_BUCKET_NAME')
+    AWS_S3_ENDPOINT_URL = os.getenv('B2_ENDPOINT')
+    AWS_S3_REGION_NAME = os.getenv('B2_REGION', 'us-east-005')
+    
+    AWS_DEFAULT_ACL = None
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_S3_SIGNATURE_VERSION = 's3v4'
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    
+    MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+else:
+    # Local Edge node configuration
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

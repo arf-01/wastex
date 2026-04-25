@@ -18,9 +18,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 CLASSES_FILE = Path(settings.BASE_DIR) / "models" / "classes.txt"
-MODEL_CLASS_NAMES: List[str] = [
-    line.strip() for line in open(CLASSES_FILE) if line.strip()
-]
+if CLASSES_FILE.exists():
+    MODEL_CLASS_NAMES: List[str] = [
+        line.strip() for line in open(CLASSES_FILE) if line.strip()
+    ]
+else:
+    # On Cloud role, the classes.txt might be missing. 
+    # Fallback to an empty list or common defaults if needed.
+    MODEL_CLASS_NAMES = []
 
 DATASETS_ROOT = Path(settings.DATASETS_ROOT)
 
