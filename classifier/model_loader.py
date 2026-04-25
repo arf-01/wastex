@@ -32,11 +32,15 @@ SOFTMAX_CONFIDENCE_MIN: float = 0.7            # Minimum softmax confidence
 # ── Model loading (singleton – loaded once at import time) ──────────────────
 
 try:
-    model = tf.keras.models.load_model(str(MODEL_PATH), compile=False)
-    logger.info("Loaded classification model from %s", MODEL_PATH)
+    if MODEL_PATH.exists():
+        model = tf.keras.models.load_model(str(MODEL_PATH), compile=False)
+        logger.info("Loaded classification model from %s", MODEL_PATH)
+    else:
+        model = None
+        logger.warning("Classification model not found at %s. Inference will be disabled.", MODEL_PATH)
 except Exception:
     logger.exception("Failed to load classification model from %s", MODEL_PATH)
-    raise
+    model = None
 
 
 # ── Preprocessing ───────────────────────────────────────────────────────────
