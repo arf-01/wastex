@@ -102,6 +102,21 @@ def api_get_pending_images(request):
         })
     
     return JsonResponse({"pending": results})
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_mark_downloaded(request):
+    """[CLOUD ROLE] Acknowledge images have been downloaded by Master so they are removed from queue."""
+    if settings.SITE_ROLE != 'CLOUD':
+        return JsonResponse({"error": "Cloud role only."}, status=403)
+
+    image_ids = request.data.get('image_ids', [])
+    if not isinstance(image_ids, list):
+        return JsonResponse({"error": "image_ids must be a list."}, status=400)
+
+    # Mark them as no longer ready for master
+    PendingImage.objects.filter(id__in=image_ids).update(is_ready_for_master=False)
+    
+    return JsonResponse({"status": "success", "marked_count": len(image_ids)})
 
 
 @api_view(['POST'])

@@ -69,6 +69,7 @@ urlpatterns = [
     # ── Cloud Broker Sync APIs ──────────────────────────────────────────
     path("api/sync/ood/receive/", sync_api.api_receive_ood, name="sync_receive_ood"),
     path("api/sync/ood/pending/", sync_api.api_get_pending_images, name="sync_get_pending"),
+    path("api/sync/ood/downloaded/", sync_api.api_mark_downloaded, name="sync_mark_downloaded"),
     path("api/sync/model/release/", sync_api.api_cloud_release_model, name="sync_release_model"),
     path("api/sync/model/latest/", sync_api.api_get_latest_release, name="sync_get_latest_model"),
 ]
