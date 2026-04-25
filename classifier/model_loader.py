@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Tuple
 
 import numpy as np
-import tensorflow as tf
 from PIL import Image
 from django.conf import settings
 
@@ -31,16 +30,17 @@ SOFTMAX_CONFIDENCE_MIN: float = 0.7            # Minimum softmax confidence
 
 # ── Model loading (singleton – loaded once at import time) ──────────────────
 
-try:
-    if MODEL_PATH.exists():
-        model = tf.keras.models.load_model(str(MODEL_PATH), compile=False)
-        logger.info("Loaded classification model from %s", MODEL_PATH)
-    else:
-        model = None
-        logger.warning("Classification model not found at %s. Inference will be disabled.", MODEL_PATH)
-except Exception:
-    logger.exception("Failed to load classification model from %s", MODEL_PATH)
-    model = None
+model = None
+if getattr(settings, 'SITE_ROLE', 'EDGE') != 'CLOUD':
+    try:
+        import tensorflow as tf
+        if MODEL_PATH.exists():
+            model = tf.keras.models.load_model(str(MODEL_PATH), compile=False)
+            logger.info("Loaded classification model from %s", MODEL_PATH)
+        else:
+            logger.warning("Classification model not found at %s. Inference will be disabled.", MODEL_PATH)
+    except Exception:
+        logger.exception("Failed to load classification model from %s", MODEL_PATH)
 
 
 # ── Preprocessing ───────────────────────────────────────────────────────────
@@ -63,33 +63,14 @@ def preprocess_image(image_path: str) -> np.ndarray:
 # ── Energy & softmax helpers ────────────────────────────────────────────────
 
 def calculate_energy(logits: np.ndarray, T: float = 1.0) -> np.ndarray:
-    """Compute the energy score for a batch of logit vectors.
-
-    Energy = −T · logsumexp(logits / T)
-
-    Lower (more negative) energy → higher confidence the sample is in-distribution.
-
-    Args:
-        logits: Raw model logits, shape (batch, num_classes).
-        T:      Temperature scaling factor (default 1.0).
-
-    Returns:
-        1-D numpy array of energy scores, one per sample.
-    """
+    import tensorflow as tf
     tensor = tf.convert_to_tensor(logits, dtype=tf.float32)
     energy = -T * tf.reduce_logsumexp(tensor / T, axis=1)
     return energy.numpy()
 
 
 def calculate_softmax_probs(logits: np.ndarray) -> np.ndarray:
-    """Convert raw logits to softmax probability distribution.
-
-    Args:
-        logits: Raw model logits, shape (batch, num_classes).
-
-    Returns:
-        Numpy array of probabilities with the same shape.
-    """
+    import tensorflow as tf
     tensor = tf.convert_to_tensor(logits, dtype=tf.float32)
     return tf.nn.softmax(tensor, axis=1).numpy()
 
