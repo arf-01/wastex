@@ -210,6 +210,24 @@
             </div>
         </div>
     </div>
+
+    <!-- Model Management Panel -->
+    <div class="grid-1" style="margin-top: 32px; margin-bottom: 32px;">
+        <div class="panel">
+            <div class="panel-header" style="justify-content: space-between; display: flex; align-items: center;">
+                <h2>AI Models (Local Repository)</h2>
+                <button class="btn btn-sm btn-primary" onclick="fetchNewModel()">📥 Fetch New Model from Cloud</button>
+            </div>
+            <div>
+                <table class="count-table">
+                    <thead><tr><th>Version Tag</th><th>Size (MB)</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="modelsTableBody">
+                        <tr><td colspan="4"><div class="empty-state"><div class="spinner"></div></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -336,8 +354,64 @@
     function applyFilters() { loadCounts(); loadOODCountOnly(); }
     function resetFilters() { document.getElementById('filterFrom').value = ''; document.getElementById('filterTo').value = ''; document.getElementById('filterBin').value = ''; applyFilters(); }
 
+    function loadLocalModels() {
+        fetch('/api/local/models/?_=' + Date.now())
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var tbody = document.getElementById('modelsTableBody');
+                if (!data.models || data.models.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:24px;">No custom models downloaded yet.</div></td></tr>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < data.models.length; i++) {
+                    var m = data.models[i];
+                    var status = m.is_active ? '<span class="status-pill online"><div class="status-indicator"></div>ACTIVE</span>' : '<span style="color:var(--text-muted);font-size:11px;font-weight:600;">INACTIVE</span>';
+                    var actions = '';
+                    if (!m.is_active) {
+                        actions = '<button class="btn btn-sm btn-primary" onclick="activateModel(\'' + m.version_tag + '\')">Activate</button>';
+                    }
+                    html += '<tr>' +
+                        '<td style="font-weight:bold;">' + m.version_tag + '</td>' +
+                        '<td>' + m.size_mb + ' MB</td>' +
+                        '<td>' + status + '</td>' +
+                        '<td>' + actions + '</td>' +
+                    '</tr>';
+                }
+                tbody.innerHTML = html;
+            })
+            .catch(function(e) { console.error('loadLocalModels error:', e); });
+    }
+
+    function fetchNewModel() {
+        if (!confirm('Fetch latest model from the cloud? This may take a few minutes.')) return;
+        var tbody = document.getElementById('modelsTableBody');
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:24px;"><div class="spinner"></div><br>Downloading model... Please wait.</div></td></tr>';
+        
+        fetch('/api/local/sync/fetch-model/', { method: 'POST' })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(res) {
+                if (!res.ok) { alert(res.data.error || 'Fetch failed'); loadLocalModels(); return; }
+                alert(res.data.message || 'Model downloaded successfully!');
+                loadLocalModels();
+            })
+            .catch(function(e) { alert('Network error: ' + e.message); loadLocalModels(); });
+    }
+
+    function activateModel(tag) {
+        if (!confirm('Activate model ' + tag + '? It will be used after the next app restart.')) return;
+        fetch('/api/local/sync/activate-model/' + encodeURIComponent(tag) + '/', { method: 'POST' })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(res) {
+                if (!res.ok) { alert(res.data.error || 'Activation failed'); return; }
+                alert(res.data.message || 'Model activated successfully!');
+                loadLocalModels();
+            })
+            .catch(function(e) { alert('Network error: ' + e.message); });
+    }
+
     function init() {
-        loadBins(); loadCounts(); loadOODCountOnly();
+        loadBins(); loadCounts(); loadOODCountOnly(); loadLocalModels();
         document.getElementById('lastUpdated').textContent = 'Last synced: ' + new Date().toLocaleTimeString();
     }
     init();

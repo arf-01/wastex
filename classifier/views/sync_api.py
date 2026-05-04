@@ -187,9 +187,15 @@ def api_get_latest_release(request):
     if not release:
         return JsonResponse({"release": None})
 
+    from django.core.files.storage import default_storage
+    try:
+        signed_url = default_storage.url(release.b2_file_key)
+    except Exception:
+        signed_url = f"{settings.MEDIA_URL}{release.b2_file_key}"
+
     return JsonResponse({
         "version_tag": release.version_tag,
-        "url": f"{settings.MEDIA_URL}{release.b2_file_key}",
+        "url": signed_url,
         "checksum": release.checksum,
         "created_at": release.created_at.isoformat()
     })

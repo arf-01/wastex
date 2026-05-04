@@ -27,7 +27,10 @@ class Command(BaseCommand):
         self.stdout.write(f"Syncing as {role}...")
 
         if role == 'EDGE':
-            self.sync_edge_to_cloud()
+            if options.get('fetch_model'):
+                self.fetch_model_from_cloud()
+            else:
+                self.sync_edge_to_cloud()
         elif role == 'MASTER':
             self.sync_master_to_cloud()
             # Also check for latest model releases to push
@@ -226,9 +229,79 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.ERROR(f"  [!] Release failed: {resp.text}"))
 
+    def fetch_model_from_cloud(self):
+        """[EDGE ROLE] Fetch the latest active model from the cloud."""
+        broker_url = os.getenv('CLOUD_BROKER_URL')
+        token = os.getenv('CLOUD_BROKER_TOKEN')
+
+        if not broker_url or not token:
+            self.stdout.write(self.style.ERROR("CLOUD_BROKER_URL or CLOUD_BROKER_TOKEN not set."))
+            return
+
+        headers = {'Authorization': f'Token {token}'}
+        self.stdout.write("Checking for latest model release...")
+
+        try:
+            resp = requests.get(
+                f"{broker_url.rstrip('/')}/api/sync/model/latest/",
+                headers=headers,
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if not data.get('release') and 'version_tag' not in data:
+                    self.stdout.write("No active models found on Cloud Broker.")
+                    return
+                
+                version_tag = data.get('version_tag')
+                url = data.get('url')
+                checksum = data.get('checksum')
+
+                # Create versions directory if not exists
+                versions_dir = Path(settings.MODELS_ROOT) / 'versions' / version_tag
+                versions_dir.mkdir(parents=True, exist_ok=True)
+                
+                target_path = versions_dir / f"{version_tag}.keras"
+
+                if target_path.exists():
+                    self.stdout.write(self.style.SUCCESS(f"  [=] Model {version_tag} is already downloaded."))
+                    return
+
+                self.stdout.write(f"  [-] Downloading {version_tag} from {url} ...")
+                
+                # Stream the download since it's a large file
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(target_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                
+                self.stdout.write("  [-] Verifying checksum...")
+                import hashlib
+                sha256 = hashlib.sha256()
+                with open(target_path, "rb") as f:
+                    sha256.update(f.read())
+                downloaded_checksum = sha256.hexdigest()
+
+                if downloaded_checksum != checksum:
+                    self.stdout.write(self.style.ERROR("  [!] Checksum mismatch! Corrupted download."))
+                    os.remove(target_path)
+                    return
+                
+                self.stdout.write(self.style.SUCCESS(f"  [+] Model {version_tag} downloaded and verified successfully!"))
+            else:
+                self.stdout.write(self.style.ERROR(f"  [!] Cloud error: {resp.text}"))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f"  [!] Connection error: {str(e)}"))
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--release",
             type=str,
             help="Specify a model version tag to release to the cloud (Master role only).",
+        )
+        parser.add_argument(
+            "--fetch-model",
+            action="store_true",
+            help="Fetch the latest model from the cloud (Edge role only).",
         )

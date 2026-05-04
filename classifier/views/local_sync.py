@@ -40,3 +40,93 @@ def api_local_trigger_pull(request):
     except Exception as e:
         logger.exception("Local sync pull failed")
         return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+def api_local_push_model(request, version_tag):
+    """[MASTER ROLE] Trigger the sync_to_cloud command to push a specific model release."""
+    if settings.SITE_ROLE != 'MASTER':
+        return JsonResponse({"error": "This action is only available on MASTER nodes."}, status=403)
+    
+    try:
+        call_command('sync_to_cloud', release=version_tag)
+        return JsonResponse({"status": "success", "message": f"Model {version_tag} pushed to cloud successfully."})
+    except Exception as e:
+        logger.exception(f"Failed to push model {version_tag}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+import os
+import shutil
+from pathlib import Path
+from classifier.models import AppSettings
+
+@csrf_exempt
+@require_POST
+def api_local_fetch_model(request):
+    """[EDGE ROLE] Trigger the sync_to_cloud command to fetch the latest model."""
+    if settings.SITE_ROLE != 'EDGE':
+        return JsonResponse({"error": "This action is only available on EDGE nodes."}, status=403)
+    
+    try:
+        call_command('sync_to_cloud', fetch_model=True)
+        return JsonResponse({"status": "success", "message": "Model fetch completed."})
+    except Exception as e:
+        logger.exception("Local fetch model failed")
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+@require_POST
+def api_local_activate_model(request, version_tag):
+    """[EDGE ROLE] Manually activate a downloaded model."""
+    if settings.SITE_ROLE != 'EDGE':
+        return JsonResponse({"error": "This action is only available on EDGE nodes."}, status=403)
+
+    try:
+        versions_dir = Path(settings.MODELS_ROOT) / 'versions' / version_tag
+        source_model = versions_dir / f"{version_tag}.keras"
+        
+        if not source_model.exists():
+            return JsonResponse({"error": f"Model {version_tag} not found locally."}, status=404)
+
+        target_model = Path(settings.MODELS_ROOT) / 'logits_mdl.keras'
+        
+        # Copy the new model over the old one
+        shutil.copy2(source_model, target_model)
+        
+        # Update AppSettings
+        AppSettings.set('active_model_version', version_tag, 'The currently active model version.')
+        
+        return JsonResponse({
+            "status": "success", 
+            "message": f"Model {version_tag} activated. It will be used on the next app restart."
+        })
+    except Exception as e:
+        logger.exception("Model activation failed")
+        return JsonResponse({"error": str(e)}, status=500)
+
+def api_local_list_models(request):
+    """[EDGE ROLE] List locally downloaded models."""
+    if settings.SITE_ROLE != 'EDGE':
+        return JsonResponse({"error": "This action is only available on EDGE nodes."}, status=403)
+    
+    versions_dir = Path(settings.MODELS_ROOT) / 'versions'
+    models_list = []
+    
+    active_version = AppSettings.get('active_model_version', 'v1')
+    
+    if versions_dir.exists():
+        for d in versions_dir.iterdir():
+            if d.is_dir():
+                keras_file = d / f"{d.name}.keras"
+                if keras_file.exists():
+                    size = os.path.getsize(keras_file)
+                    models_list.append({
+                        "version_tag": d.name,
+                        "size_mb": round(size / (1024 * 1024), 2),
+                        "is_active": (d.name == active_version)
+                    })
+    
+    # Sort descending by version name
+    models_list.sort(key=lambda x: x["version_tag"], reverse=True)
+    
+    return JsonResponse({"models": models_list, "active_version": active_version})
