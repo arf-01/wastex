@@ -1,161 +1,223 @@
 {% extends "classifier/base_edge.html" %}
 
 {% block title %}Inspect OOD{% endblock %}
-{% block topbar_title %}Inspect OOD{% endblock %}
-{% block topbar_subtitle %}<span class="topbar-subtitle">Review and label out-of-distribution detections from your bins</span>{% endblock %}
-{% block topbar_right %}{% endblock %}
+{% block topbar_title %}Anomaly Inspection{% endblock %}
+{% block topbar_subtitle %}<span class="topbar-subtitle">Review and classify out-of-distribution detections</span>{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* ── Stats bar ──────────────────────────────────────────────── */
-    .stats-bar {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
-    }
-    .stat-card {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow-sm);
-    }
-    .stat-card .s-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px; }
-    .stat-card .s-value { font-size: 22px; font-weight: 700; color: var(--text);
-        font-variant-numeric: tabular-nums; }
-    .stat-card .s-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-    .stat-card.danger .s-value { color: var(--red-500); }
-    .stat-card.success .s-value { color: var(--green-500); }
-
-    /* ── Toolbar ───────────────────────────────────────────────── */
-    .toolbar {
-        display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
-    }
-    .filter-tabs { display: flex; gap: 6px; }
-    .tab {
-        padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-        background: var(--surface); font-size: 13px; font-family: inherit;
-        cursor: pointer; color: var(--text-secondary); transition: all var(--transition);
-    }
-    .tab:hover { background: var(--gray-100); color: var(--text); }
-    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .tab-count { font-weight: 700; margin-left: 4px; }
-    .toolbar-sep { flex: 1; }
-    .bin-filter-wrap { display: flex; align-items: center; gap: 8px; }
-    .bin-filter-wrap label { font-size: 11px; font-weight: 600; color: var(--text-muted);
-        text-transform: uppercase; letter-spacing: 0.5px; }
-    .bin-filter-wrap select {
-        border: 1px solid var(--gray-300); border-radius: 4px; padding: 6px 10px;
-        font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface);
+    /* ── Professional Layout ── */
+    .inspect-container {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
     }
 
-    /* ── Image grid ────────────────────────────────────────────── */
+    /* ── Image Grid ── */
     .image-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 16px; margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 24px;
     }
+
     .image-card {
-        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-        overflow: hidden; cursor: pointer;
-        transition: box-shadow var(--transition), border-color var(--transition);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
         box-shadow: var(--shadow-sm);
     }
-    .image-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
-    .image-card.reviewed-card { opacity: 0.7; }
-    .image-card.reviewed-card:hover { opacity: 1; }
-    .image-card-img { width: 100%; height: 180px; object-fit: cover; background: var(--gray-100); display: block; }
-    .image-card-body { padding: 10px 14px; }
-    .image-card-name { font-size: 13px; font-weight: 500; white-space: nowrap;
-        overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
-    .image-card-meta {
-        display: flex; align-items: center; justify-content: space-between;
-        font-size: 11px; color: var(--text-muted);
-    }
-    .image-card-energy { font-weight: 600; color: var(--red-500); font-variant-numeric: tabular-nums; }
-    .bin-pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: 600;
-        background: var(--blue-100); color: #1e40af; max-width: 100px;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .bin-pill.manual { background: var(--gray-100); color: var(--text-muted); }
 
-    /* ── Modal ─────────────────────────────────────────────────── */
-    .modal-img { width: 100%; border-radius: var(--radius-sm); margin-bottom: 16px;
-        background: var(--gray-50); max-height: 380px; object-fit: contain; }
-    .logits-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-    .logits-title { font-size: 11px; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 10px; }
-    .modal-actions { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
-        display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .label-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; margin-bottom: 8px; }
+    .image-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary);
+    }
+
+    .image-card-img-wrap {
+        width: 100%;
+        aspect-ratio: 4/3;
+        background: #000;
+        overflow: hidden;
+    }
+
+    .image-card-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .image-card:hover .image-card-img {
+        transform: scale(1.05);
+    }
+
+    .image-card-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .image-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* ── Professional Modal ── */
+    .modal {
+        width: 720px;
+        max-width: 95vw;
+        background: var(--modal-bg);
+        border-radius: var(--radius);
+        padding: 40px;
+    }
+
+    .modal-layout {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 40px;
+    }
+
+    .modal-preview {
+        width: 100%;
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        background: #000;
+        border: 1px solid var(--border);
+        aspect-ratio: 4/3;
+    }
+
+    .modal-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .modal-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .control-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+    }
+
+    /* ── Form Elements ── */
     .label-select {
-        padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
-        font-size: 13px; font-family: inherit; background: var(--surface); cursor: pointer; flex: 1; min-width: 140px;
+        width: 100%;
+        height: 48px;
+        background: var(--input-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        padding: 0 16px;
+        font-family: inherit;
+        font-size: 14px;
     }
-    .label-select:focus { outline: none; border-color: var(--primary); }
+
     .label-input {
-        padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
-        font-size: 13px; font-family: inherit; background: var(--surface); flex: 1; min-width: 140px;
+        width: 100%;
+        height: 48px;
+        background: var(--input-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        padding: 0 16px;
+        font-family: inherit;
+        font-size: 14px;
+        margin-top: 8px;
     }
-    .label-input:focus { outline: none; border-color: var(--primary); }
-    .label-input::placeholder { color: var(--text-muted); }
-    .dataset-badge {
-        display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
-        background: var(--blue-100); color: #1e40af; border-radius: 4px; font-size: 12px; font-weight: 600;
+
+    .btn-submit {
+        height: 54px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 12px;
+        box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
     }
-    .source-bin-row {
-        display: flex; align-items: center; gap: 8px;
-        padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px;
+
+    .btn-submit:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.4);
     }
-    .source-bin-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.5px; color: var(--text-muted); width: 90px; flex-shrink: 0; }
-    .source-bin-value {
-        display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
-        background: var(--blue-50, #eff6ff); border: 1px solid var(--blue-200, #bfdbfe);
-        border-radius: 9999px; font-size: 13px; font-weight: 600; color: #1e40af;
+
+    .btn-submit:disabled {
+        background: var(--text-muted);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+        opacity: 0.5;
     }
-    .source-bin-value.manual { background: var(--gray-100); border-color: var(--border); color: var(--text-muted); }
-    @media (max-width: 640px) {
-        .image-grid { grid-template-columns: 1fr; }
-        .stats-bar { grid-template-columns: repeat(2, 1fr); }
+
+    .ignore-link {
+        text-align: center;
+        font-size: 13px;
+        color: var(--text-muted);
+        text-decoration: none;
+        margin-top: 8px;
+    }
+
+    .ignore-link:hover {
+        color: var(--danger);
+    }
+
+    @media (max-width: 768px) {
+        .modal-layout { grid-template-columns: 1fr; }
+        .modal { padding: 24px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-    <!-- Stats Summary Bar -->
-    <div class="stats-bar" id="statsBar">
-        <div class="stat-card danger">
-            <div class="s-label">Pending Review</div>
-            <div class="s-value" id="statPending">—</div>
-            <div class="s-sub">unreviewed OODs</div>
-        </div>
-        <div class="stat-card">
-            <div class="s-label">Total OOD</div>
-            <div class="s-value" id="statTotal">—</div>
-            <div class="s-sub">all time</div>
-        </div>
-        <div class="stat-card success">
-            <div class="s-label">Reviewed</div>
-            <div class="s-value" id="statReviewed">—</div>
-            <div class="s-sub">labelled or skipped</div>
-        </div>
-        <div class="stat-card">
-            <div class="s-label">Active Bins</div>
-            <div class="s-value" id="statBins">—</div>
-            <div class="s-sub">contributing OODs</div>
-        </div>
-    </div>
-
-    <!-- Toolbar: tabs + bin filter -->
-    <div class="toolbar">
+<div class="inspect-container">
+    <!-- Toolbar -->
+    <div class="toolbar" style="display: flex; justify-content: space-between; align-items: center; background: var(--surface); padding: 16px 24px; border: 1px solid var(--border); border-radius: var(--radius-sm);">
         <div class="filter-tabs">
-            <button class="tab active" id="tabAll"      onclick="setFilter('all')">All <span class="tab-count" id="tabAllCount"></span></button>
-            <button class="tab"        id="tabPending"  onclick="setFilter('pending')">Pending <span class="tab-count" id="tabPendingCount"></span></button>
-            <button class="tab"        id="tabReviewed" onclick="setFilter('reviewed')">Reviewed <span class="tab-count" id="tabReviewedCount"></span></button>
+            <button class="tab active" id="tabPending" onclick="setFilter('pending')">Pending</button>
+            <button class="tab" id="tabReviewed" onclick="setFilter('reviewed')">All History</button>
         </div>
-        <div class="toolbar-sep"></div>
-        <div class="bin-filter-wrap">
-            <label>Bin</label>
-            <select id="binFilter" onchange="loadImages(1)">
-                <option value="">All Bins</option>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <!-- Cloud Sync Trigger -->
+            <button class="btn" onclick="triggerCloudSync()" id="btnSyncCloud" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <span id="syncText">Sync Labeled to Cloud</span>
+            </button>
+            
+            <label style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Bin Filter</label>
+            <select id="binFilter" class="form-select" style="width: 180px;" onchange="loadImages(1)">
+                <option value="">All Connected Nodes</option>
             </select>
         </div>
     </div>
@@ -166,116 +228,87 @@
     </div>
 
     <!-- Pagination -->
-    <div class="pagination" id="pagination" style="display:none;">
-        <button id="prevBtn" onclick="loadImages(currentPage-1)">← Prev</button>
-        <span id="pageInfo"></span>
-        <button id="nextBtn" onclick="loadImages(currentPage+1)">Next →</button>
+    <div class="pagination" id="pagination" style="display:none; justify-content: center; margin-top: 32px;">
+        <button class="btn btn-sm" id="prevBtn" onclick="loadImages(currentPage-1)">← Previous</button>
+        <span id="pageInfo" style="margin: 0 24px; font-weight: 600; color: var(--text-secondary);"></span>
+        <button class="btn btn-sm" id="nextBtn" onclick="loadImages(currentPage+1)">Next →</button>
     </div>
+</div>
 
-    <!-- Detail Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3 id="modalTitle">Image Detail</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+<!-- Simple Detail Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 id="modalTitle">Inspect Anomaly</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-layout" id="modalContent">
+                <!-- Content injected here -->
             </div>
-            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
-    var currentPage = 1, currentFilter = 'all', imageCache = [];
+    var currentPage = 1, currentFilter = 'pending', imageCache = [];
+    var currentImageId = null, currentIdx = null;
 
-    /* ── Bin filter population ───────────────────────────────── */
     function loadBinOptions() {
         fetch('/api/bins/?_=' + Date.now())
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 var sel = document.getElementById('binFilter');
-                var cur = sel.value;
-                var html = '<option value="">All Bins</option>';
-                // Track unique bins that have OODs
-                var binsWithOod = 0;
+                var html = '<option value="">All Connected Nodes</option>';
                 data.bins.forEach(function(b) {
-                    if (b.ood_count > 0) binsWithOod++;
-                    var oodLabel = b.ood_count > 0 ? ' (' + b.ood_count + ' OOD)' : '';
-                    var sel_attr = (b.bin_id === cur) ? ' selected' : '';
-                    html += '<option value="' + b.bin_id + '"' + sel_attr + '>' + b.bin_id + oodLabel + '</option>';
+                    html += '<option value="' + b.bin_id + '">' + b.bin_id + ' (' + b.ood_count + ' OOD)</option>';
                 });
                 sel.innerHTML = html;
-                document.getElementById('statBins').textContent = binsWithOod;
-            })
-            .catch(function(e) { console.error('loadBinOptions:', e); });
+            });
     }
 
-    /* ── Tab switching ───────────────────────────────────────── */
     function setFilter(filter) {
         currentFilter = filter;
-        document.getElementById('tabAll').className     = 'tab' + (filter === 'all'      ? ' active' : '');
-        document.getElementById('tabPending').className = 'tab' + (filter === 'pending'  ? ' active' : '');
-        document.getElementById('tabReviewed').className= 'tab' + (filter === 'reviewed' ? ' active' : '');
+        document.getElementById('tabPending').classList.toggle('active', filter === 'pending');
+        document.getElementById('tabReviewed').classList.toggle('active', filter === 'reviewed');
         loadImages(1);
     }
 
-    /* ── Main image loader ───────────────────────────────────── */
     function loadImages(page) {
         page = page || 1; currentPage = page;
         var binId = document.getElementById('binFilter').value;
         var url = '/api/ood/?page=' + page + '&per_page=12&_=' + Date.now();
-        if (currentFilter === 'pending')  url += '&reviewed=false';
-        if (currentFilter === 'reviewed') url += '&reviewed=true';
+        if (currentFilter === 'pending') url += '&reviewed=false';
         if (binId) url += '&bin_id=' + encodeURIComponent(binId);
 
         fetch(url).then(function(r) { return r.json(); }).then(function(data) {
             imageCache = data.images;
-
-            // Update counts in tabs + stats bar
-            if (currentFilter === 'all' && data.unreviewed !== undefined) {
-                var reviewed = data.total - data.unreviewed;
-                document.getElementById('tabAllCount').textContent      = data.total;
-                document.getElementById('tabPendingCount').textContent  = data.unreviewed;
-                document.getElementById('tabReviewedCount').textContent = reviewed;
-                document.getElementById('statTotal').textContent    = data.total;
-                document.getElementById('statPending').textContent  = data.unreviewed;
-                document.getElementById('statReviewed').textContent = reviewed;
-            }
-
             var grid = document.getElementById('imageGrid');
             if (data.images.length === 0) {
-                grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">✅</div>' +
-                    (currentFilter === 'pending' ? 'All images reviewed!' : 'No OOD images found') + '</div>';
+                grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1; padding: 100px 0;">' +
+                    '<div style="font-size: 48px; margin-bottom: 20px;">✨</div>' +
+                    '<div>No anomalies requiring review</div></div>';
                 document.getElementById('pagination').style.display = 'none'; return;
             }
-
             var html = '';
             for (var i = 0; i < data.images.length; i++) {
                 var img = data.images[i];
-                var energyStr = img.energy !== null ? img.energy.toFixed(3) : '—';
-                var statusTag;
-                if (img.assigned_label) statusTag = '<span class="tag tag-labeled">' + img.assigned_label + '</span>';
-                else if (img.reviewed)  statusTag = '<span class="tag tag-reviewed">Reviewed</span>';
-                else                    statusTag = '<span class="tag tag-pending">Pending</span>';
-
-                var binPill = img.bin_id
-                    ? '<span class="bin-pill">📡 ' + img.bin_id + '</span>'
-                    : '<span class="bin-pill manual">Manual</span>';
-
-                var reviewedClass = img.reviewed ? ' reviewed-card' : '';
-                html += '<div class="image-card' + reviewedClass + '" onclick="showDetail(' + i + ')">' +
-                    '<img class="image-card-img" src="' + (img.image_url || '') + '" onerror="this.style.background=\'var(--gray-100)\'" alt="">' +
+                var status = img.assigned_label ? '<span class="status-tag tag-labeled">' + img.assigned_label + '</span>' :
+                             img.reviewed ? '<span class="status-tag tag-reviewed">Ignored</span>' :
+                             '<span class="status-tag tag-pending">Pending</span>';
+                
+                html += '<div class="image-card" onclick="openModal(' + i + ')">' +
+                    '<div class="image-card-img-wrap"><img class="image-card-img" src="' + img.image_url + '" alt=""></div>' +
                     '<div class="image-card-body">' +
-                        '<div class="image-card-name">' + img.filename + '</div>' +
-                        '<div class="image-card-meta">' + statusTag + binPill + '</div>' +
-                        '<div style="display:flex;justify-content:flex-end;margin-top:4px;">' +
-                            '<span class="image-card-energy">⚡ ' + energyStr + '</span>' +
-                        '</div>' +
+                        '<div class="image-card-title">' + img.filename + '</div>' +
+                        '<div class="card-meta">' + status + '<span style="font-size:10px; color:var(--text-muted);">' + new Date(img.uploaded_at).toLocaleDateString() + '</span></div>' +
                     '</div></div>';
             }
             grid.innerHTML = html;
-
+            
             var pag = document.getElementById('pagination');
             if (data.pages > 1) {
                 pag.style.display = 'flex';
@@ -283,128 +316,83 @@
                 document.getElementById('prevBtn').disabled = data.page <= 1;
                 document.getElementById('nextBtn').disabled = data.page >= data.pages;
             } else { pag.style.display = 'none'; }
-        }).catch(function(e) {
-            console.error('loadImages error:', e);
-            document.getElementById('imageGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Failed to load images</div>';
         });
-
-        // Always refresh the tab counters from a global query
-        if (currentFilter !== 'all') {
-            var binId = document.getElementById('binFilter').value;
-            var countUrl = '/api/ood/?page=1&per_page=1&_=' + Date.now() + (binId ? '&bin_id=' + encodeURIComponent(binId) : '');
-            fetch(countUrl).then(function(r) { return r.json(); }).then(function(data) {
-                if (data.unreviewed !== undefined) {
-                    var reviewed = data.total - data.unreviewed;
-                    document.getElementById('tabAllCount').textContent      = data.total;
-                    document.getElementById('tabPendingCount').textContent  = data.unreviewed;
-                    document.getElementById('tabReviewedCount').textContent = reviewed;
-                    document.getElementById('statTotal').textContent    = data.total;
-                    document.getElementById('statPending').textContent  = data.unreviewed;
-                    document.getElementById('statReviewed').textContent = reviewed;
-                }
-            });
-        }
     }
 
-    /* ── Detail modal ────────────────────────────────────────── */
-    function showDetail(idx) {
-        var img = imageCache[idx]; if (!img) return;
+    function openModal(idx) {
+        var img = imageCache[idx];
+        currentIdx = idx;
+        currentImageId = img.id;
         document.getElementById('modalTitle').textContent = img.filename;
+        
+        var options = '<option value="">— Select Existing Class —</option>';
+        CLASS_NAMES.forEach(function(c) {
+            options += '<option value="' + c + '">' + c + '</option>';
+        });
 
-        var logitsHtml = '<div style="color:var(--text-muted);font-size:13px">No logits available</div>';
-        if (img.logits && img.logits.length) {
-            var maxAbs = 1;
-            for (var j = 0; j < img.logits.length; j++) { var a = Math.abs(img.logits[j]); if (a > maxAbs) maxAbs = a; }
-            logitsHtml = '';
-            for (var j = 0; j < img.logits.length; j++) {
-                var v = img.logits[j], pct = (Math.abs(v) / maxAbs * 100).toFixed(1), cls = v < 0 ? ' negative' : '';
-                logitsHtml += '<div class="logit-row"><span class="logit-name">' + (CLASS_NAMES[j] || 'Class ' + j) + '</span>' +
-                    '<div class="logit-bar-wrap"><div class="logit-bar' + cls + '" style="width:' + pct + '%"></div></div>' +
-                    '<span class="logit-val">' + v.toFixed(4) + '</span></div>';
-            }
-        }
-
-        var statusTag;
-        if (img.assigned_label) statusTag = '<span class="tag tag-labeled">' + img.assigned_label + '</span>';
-        else if (img.reviewed)  statusTag = '<span class="tag tag-reviewed">Reviewed</span>';
-        else                    statusTag = '<span class="tag tag-pending">Pending</span>';
-
-        // Source bin badge
-        var sourceBinHtml = img.bin_id
-            ? '<span class="source-bin-value">📡 ' + img.bin_id + '</span>'
-            : '<span class="source-bin-value manual">🌐 Manual Upload</span>';
-
-        var bodyHtml = '';
-        if (img.image_url) bodyHtml += '<img class="modal-img" src="' + img.image_url + '" alt="">';
-
-        // Source bin — prominent row at top
-        bodyHtml += '<div class="source-bin-row"><span class="source-bin-label">Source Bin</span>' + sourceBinHtml + '</div>';
-
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">' + statusTag + '</span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Energy Score</span><span class="detail-value" style="color:var(--red-500)">' + (img.energy !== null ? img.energy.toFixed(6) : '—') + '</span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Dimensions</span><span class="detail-value">' + (img.width || '—') + ' × ' + (img.height || '—') + '</span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Uploaded</span><span class="detail-value">' + new Date(img.uploaded_at).toLocaleString() + '</span></div>';
-        bodyHtml += '<div class="logits-section"><div class="logits-title">Model Logits</div>' + logitsHtml + '</div>';
-
-        bodyHtml += '<div class="modal-actions">';
-        if (img.assigned_label) {
-            bodyHtml += '<span class="dataset-badge">✓ Labeled as <strong style="margin-left:4px">' + img.assigned_label + '</strong></span>';
-            bodyHtml += img.added_to_dataset
-                ? '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Added to dataset</span>'
-                : '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Staged — will be included in next version</span>';
-        } else {
-            bodyHtml += '<div class="label-group"><select class="label-select" id="labelSelect" onchange="onLabelSelectChange()"><option value="">— Pick existing class —</option>';
-            for (var k = 0; k < CLASS_NAMES.length; k++) bodyHtml += '<option value="' + CLASS_NAMES[k] + '">' + CLASS_NAMES[k] + '</option>';
-            bodyHtml += '<option value="__new__">+ New class…</option></select>';
-            bodyHtml += '<input class="label-input" id="labelInput" type="text" placeholder="Or type new class name" style="display:none"></div>';
-            bodyHtml += '<button class="btn btn-sm btn-primary" onclick="labelImage(' + img.id + ', ' + idx + ')">Assign Label</button>';
-            bodyHtml += '<button class="btn btn-sm btn-ghost" onclick="markReview(' + img.id + ', true, ' + idx + ')">Skip (mark reviewed)</button>';
-        }
-        bodyHtml += '</div>';
-
-        document.getElementById('modalBody').innerHTML = bodyHtml;
+        var html = '<div class="modal-preview"><img src="' + img.image_url + '"></div>' +
+            '<div class="modal-controls">' +
+                '<div class="control-group">' +
+                    '<label class="control-label">Classification</label>' +
+                    '<select class="label-select" id="classSelect" onchange="updateSubmitState()">' + options + '</select>' +
+                '</div>' +
+                '<div class="control-group">' +
+                    '<label class="control-label">Or Create New Label</label>' +
+                    '<input type="text" class="label-input" id="classInput" placeholder="Enter new category name..." oninput="updateSubmitState()">' +
+                '</div>' +
+                '<div class="control-group" style="margin-top: auto;">' +
+                    '<button class="btn-submit" id="submitBtn" disabled onclick="submitAssignment()">Submit Assignment</button>' +
+                    '<a href="#" class="ignore-link" onclick="ignoreImage(event)">Mark as Non-Waste / Ignore</a>' +
+                '</div>' +
+            '</div>';
+        
+        document.getElementById('modalContent').innerHTML = html;
         document.getElementById('modalOverlay').classList.add('active');
     }
 
-    function markReview(imageId, reviewed, idx) {
-        fetch('/api/ood/' + imageId + '/review/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ reviewed: reviewed })
-        }).then(function(r) { return r.json(); }).then(function(data) {
-            if (imageCache[idx]) imageCache[idx].reviewed = data.reviewed;
-            showDetail(idx); loadImages(currentPage);
-            showToast('Marked as reviewed', 'success');
-        }).catch(function(e) { showToast('Failed to update', 'error'); });
+    function updateSubmitState() {
+        var sel = document.getElementById('classSelect').value;
+        var inp = document.getElementById('classInput').value.trim();
+        document.getElementById('submitBtn').disabled = !(sel || inp);
     }
 
-    function onLabelSelectChange() {
-        var sel = document.getElementById('labelSelect'), inp = document.getElementById('labelInput');
-        if (sel.value === '__new__') { inp.style.display = 'block'; inp.focus(); }
-        else { inp.style.display = 'none'; inp.value = ''; }
-    }
+    function submitAssignment() {
+        var sel = document.getElementById('classSelect').value;
+        var inp = document.getElementById('classInput').value.trim();
+        var label = inp || sel;
+        if (!label) return;
 
-    function labelImage(imageId, idx) {
-        var sel = document.getElementById('labelSelect'), inp = document.getElementById('labelInput'), label = '';
-        if (sel.value === '__new__') { label = inp.value.trim(); if (!label) { showToast('Enter a class name', 'error'); inp.focus(); return; } }
-        else label = sel.value;
-        if (!label) { showToast('Select or enter a class label', 'error'); return; }
-        fetch('/api/ood/' + imageId + '/label/', {
+        showLoading('Submitting...');
+        fetch('/api/ood/' + currentImageId + '/label/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify({ label: label })
-        }).then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-        .then(function(result) {
-            if (!result.ok) { showToast(result.data.error || 'Failed to label', 'error'); return; }
-            if (imageCache[idx]) { imageCache[idx].assigned_label = result.data.assigned_label; imageCache[idx].reviewed = true; }
-            showDetail(idx); loadImages(currentPage);
-            showToast('Labeled as ' + result.data.assigned_label, 'success');
-        }).catch(function() { showToast('Failed to label image', 'error'); });
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            hideLoading();
+            if (data.error) { showToast(data.error, 'error'); }
+            else {
+                showToast('Successfully labeled as ' + label, 'success');
+                closeModal();
+                loadImages(currentPage);
+                // Update CLASS_NAMES if new
+                if (inp && !CLASS_NAMES.includes(inp)) { CLASS_NAMES.push(inp); CLASS_NAMES.sort(); }
+            }
+        }).catch(function() { hideLoading(); showToast('Network error', 'error'); });
     }
 
-    function getCookie(name) {
-        var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-        return v ? v[2] : null;
+    function ignoreImage(e) {
+        e.preventDefault();
+        showLoading('Updating...');
+        fetch('/api/ood/' + currentImageId + '/review/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ reviewed: true })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            hideLoading();
+            showToast('Anomaly ignored', 'info');
+            closeModal();
+            loadImages(currentPage);
+        }).catch(function() { hideLoading(); showToast('Network error', 'error'); });
     }
 
     function closeModal(e) {
@@ -412,7 +400,36 @@
             document.getElementById('modalOverlay').classList.remove('active');
     }
 
-    // Init
+    function getCookie(name) {
+        var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? v[2] : null;
+    }
+
+    function triggerCloudSync() {
+        const btn = document.getElementById('btnSyncCloud');
+        const txt = document.getElementById('syncText');
+        if (!confirm('This will upload all labeled OOD images to the Cloud Broker and DELETE them from this local bin. Proceed?')) return;
+        
+        btn.disabled = true;
+        txt.innerText = 'Syncing...';
+
+        fetch('/api/local/sync/push/', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    loadImages(1);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(err => alert('Network error: ' + err))
+            .finally(() => {
+                btn.disabled = false;
+                txt.innerText = 'Sync Labeled to Cloud';
+            });
+    }
+
     loadBinOptions();
     loadImages(1);
 </script>

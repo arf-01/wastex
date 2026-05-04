@@ -130,8 +130,34 @@ def load_split(
     labels: list[int] = []
     skipped = 0
 
-    for rel_path, class_label in entries:
-        full_path = str(BASE_DIR / rel_path)
+    for path_str, class_label in entries:
+        p = Path(path_str)
+        full_path = None
+
+        # ── Path Resolution Strategy ────────────────────────────────────
+        # 1. Try as absolute path (handles D:/... or C:/...)
+        if p.is_absolute():
+            if p.exists():
+                full_path = str(p)
+        else:
+            # 2. Try relative to DATASETS_ROOT
+            datasets_try = Path(settings.DATASETS_ROOT) / p
+            if datasets_try.exists():
+                full_path = str(datasets_try)
+            
+            # 3. Try relative to MEDIA_ROOT
+            elif (Path(settings.MEDIA_ROOT) / p).exists():
+                full_path = str(Path(settings.MEDIA_ROOT) / p)
+                
+            # 4. Fallback to BASE_DIR (legacy behavior)
+            elif (Path(settings.BASE_DIR) / p).exists():
+                full_path = str(Path(settings.BASE_DIR) / p)
+
+        if not full_path:
+            skipped += 1
+            continue
+
+        paths.append(full_path)
         if not Path(full_path).exists():
             skipped += 1
             continue

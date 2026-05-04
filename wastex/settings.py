@@ -13,21 +13,23 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file (if it exists)
-load_dotenv(BASE_DIR / '.env', override=True)
+# We set override=False so that terminal environment variables (like SITE_ROLE) 
+# take precedence over the .env file.
+load_dotenv(BASE_DIR / '.env', override=False)
 
 # ── Site Configuration ──────────────────────────────────────────────────────
 # Roles: EDGE (on-site), MASTER (Paris training), CLOUD (Broker)
-SITE_ROLE = os.getenv('SITE_ROLE', 'EDGE').upper()
+SITE_ROLE = os.getenv('SITE_ROLE', 'EDGE').upper().strip()
 if SITE_ROLE not in ('EDGE', 'MASTER', 'CLOUD'):
     raise ImproperlyConfigured(f"Invalid SITE_ROLE: {SITE_ROLE}")
 
 
-from django.core.exceptions import ImproperlyConfigured
 
 # ── Security ─────────────────────────────────────────────────────────────────
 # All secrets MUST be provided via .env — no insecure fallbacks.
@@ -97,7 +99,8 @@ import dj_database_url
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-if DATABASE_URL:
+if SITE_ROLE == 'CLOUD' and DATABASE_URL:
+    # Production Cloud Role (Supabase)
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -106,15 +109,13 @@ if DATABASE_URL:
         )
     }
 else:
-    # Local fallback
+    # Edge/Master Local Role (Isolated SQLite)
+    # This prevents the Master from seeing Edge data directly on the same machine.
+    db_name = f'db_{SITE_ROLE.lower()}.sqlite3'
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'postgres'),
-            'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '5432'),
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / db_name,
         }
     }
 
@@ -156,32 +157,32 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # ── Storage Configuration ────────────────────────────────────────────────
-# These paths are configured during installation and stored in the database
-# (AppSettings table). They can be overridden by environment variables for
-# backward compatibility.
+# Each role gets its own root folder to ensure strict isolation.
+STORAGE_BASE = BASE_DIR / 'storage' / SITE_ROLE.lower()
 
-def get_storage_path(env_key: str, db_key: str, default_folder: str) -> Path:
-    """Get storage path from environment variable."""
+def get_storage_path(env_key: str, default_path: Path) -> Path:
+    """Get storage path from environment or use default role-based path."""
     env_value = os.getenv(env_key)
     if env_value:
         return Path(env_value)
-    
-    return BASE_DIR / default_folder
+    return default_path
 
 # Trained Models (ML model checkpoints)
-MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', 'models_root', 'models')
+MODELS_ROOT = get_storage_path('WASTE_MODELS_ROOT', STORAGE_BASE / 'models')
 
-# ── Cloud Broker Storage (Backblaze B2) ──────────────────────────────────
-MEDIA_ROOT = get_storage_path('WASTE_MEDIA_ROOT', 'media_root', 'media')
-DATASETS_ROOT = get_storage_path('WASTE_DATASETS_ROOT', 'datasets_root', 'datasets')
+# Media & Datasets
+MEDIA_ROOT = get_storage_path('WASTE_MEDIA_ROOT', STORAGE_BASE / 'media')
+DATASETS_ROOT = get_storage_path('WASTE_DATASETS_ROOT', STORAGE_BASE / 'datasets')
+
+# Backblaze B2 (S3 Compatible) - Available to all roles for authenticated sync
+AWS_ACCESS_KEY_ID = os.getenv('B2_APPLICATION_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('B2_APPLICATION_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('B2_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = os.getenv('B2_ENDPOINT')
+AWS_S3_REGION_NAME = os.getenv('B2_REGION', 'us-east-005')
 
 if SITE_ROLE == 'CLOUD':
     # Cloud Broker configuration (Backblaze B2)
-    AWS_ACCESS_KEY_ID = os.getenv('B2_APPLICATION_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('B2_APPLICATION_KEY')
-    AWS_STORAGE_BUCKET_NAME = os.getenv('B2_BUCKET_NAME')
-    AWS_S3_ENDPOINT_URL = os.getenv('B2_ENDPOINT')
-    AWS_S3_REGION_NAME = os.getenv('B2_REGION', 'us-east-005')
     
     AWS_DEFAULT_ACL = None
     AWS_S3_FILE_OVERWRITE = False

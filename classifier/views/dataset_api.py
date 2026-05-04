@@ -417,10 +417,18 @@ def api_register_version(request):
                     continue
                 for f in sorted(cls_dir.iterdir()):
                     if f.is_file() and f.suffix.lower() in IMG_EXTS:
-                        rel_path = f.relative_to(Path(settings.BASE_DIR))
+                        # Cross-drive support: If file is on a different drive than BASE_DIR,
+                        # store the absolute path. Otherwise, store relative path.
+                        try:
+                            rel_path = f.relative_to(Path(settings.BASE_DIR))
+                            path_to_store = str(rel_path).replace("\\", "/")
+                        except ValueError:
+                            # Different drive (e.g. project on C:, data on D:)
+                            path_to_store = str(f).replace("\\", "/")
+
                         entries_to_create.append(VersionEntry(
                             version=version_obj,
-                            physical_path=str(rel_path).replace("\\", "/"),
+                            physical_path=path_to_store,
                             split=split_name,
                             class_label=cls_dir.name,
                             filename=f.name,
@@ -437,10 +445,15 @@ def api_register_version(request):
                 continue
             for f in sorted(cls_dir.iterdir()):
                 if f.is_file() and f.suffix.lower() in IMG_EXTS:
-                    rel_path = f.relative_to(Path(settings.BASE_DIR))
+                    try:
+                        rel_path = f.relative_to(Path(settings.BASE_DIR))
+                        path_to_store = str(rel_path).replace("\\", "/")
+                    except ValueError:
+                        path_to_store = str(f).replace("\\", "/")
+
                     entries_to_create.append(VersionEntry(
                         version=version_obj,
-                        physical_path=str(rel_path).replace("\\", "/"),
+                        physical_path=path_to_store,
                         split="",
                         class_label=cls_dir.name,
                         filename=f.name,

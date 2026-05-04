@@ -18,6 +18,7 @@ from .views.pi_api import api_pi_inference, api_pi_health
 from .views.api_keys import profile as api_key_profile, regenerate_token
 from .views.bin_api import api_bins
 from .views import sync_api
+from .views import local_sync
 
 urlpatterns = [
     # ── Edge Pages ──────────────────────────────────────────────────────
@@ -72,5 +73,9 @@ urlpatterns = [
     path("api/sync/ood/downloaded/", sync_api.api_mark_downloaded, name="sync_mark_downloaded"),
     path("api/sync/model/release/", sync_api.api_cloud_release_model, name="sync_release_model"),
     path("api/sync/model/latest/", sync_api.api_get_latest_release, name="sync_get_latest_model"),
+
+    # ── Local Sync Triggers (for UI Buttons) ──────────────────────────
+    path("api/local/sync/push/", local_sync.api_local_trigger_push, name="local_sync_push"),
+    path("api/local/sync/pull/", local_sync.api_local_trigger_pull, name="local_sync_pull"),
 ]
 

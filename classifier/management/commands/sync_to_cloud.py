@@ -12,6 +12,7 @@ Behaviour:
 import os
 import requests
 import logging
+from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from classifier.models import Image, TrashItem
@@ -56,6 +57,7 @@ class Command(BaseCommand):
         headers = {'Authorization': f'Token {token}'}
         
         for img in images_to_sync:
+            synced_successfully = False
             try:
                 # Open the physical file
                 with open(img.image.path, 'rb') as f:
@@ -77,10 +79,24 @@ class Command(BaseCommand):
                         img.is_synced_to_cloud = True
                         img.save(update_fields=['is_synced_to_cloud'])
                         self.stdout.write(self.style.SUCCESS(f"  [+] Synced: {img.filename}"))
+                        synced_successfully = True
                     else:
                         self.stdout.write(self.style.ERROR(f"  [!] Failed {img.filename}: {resp.text}"))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"  [!] Error syncing {img.filename}: {str(e)}"))
+
+            # CLEANUP: Move outside the 'with open' block so Windows releases the lock
+            if synced_successfully:
+                try:
+                    if os.path.exists(img.image.path):
+                        os.remove(img.image.path)
+                        self.stdout.write(self.style.WARNING(f"      [x] Purged local file: {img.filename}"))
+                    
+                    # Also delete from the Edge database so the UI doesn't show 404s
+                    img.delete()
+                    self.stdout.write(self.style.WARNING(f"      [x] Purged database record: {img.filename}"))
+                except Exception as cleanup_err:
+                    self.stdout.write(self.style.ERROR(f"      [!] Cleanup failed: {str(cleanup_err)}"))
 
     def sync_master_to_cloud(self):
         """Pull new training data from cloud."""
@@ -109,27 +125,63 @@ class Command(BaseCommand):
                 staging_dir.mkdir(parents=True, exist_ok=True)
 
                 for p in pending:
-                    # Download the file
                     class_dir = staging_dir / p['label']
                     class_dir.mkdir(parents=True, exist_ok=True)
                     
                     target_path = class_dir / p['b2_key'].split('/')[-1]
                     
-                    if target_path.exists():
-                        self.stdout.write(f"  [=] Already exists: {target_path.name}")
-                        continue
+                    # 1. Download if missing
+                    if not target_path.exists():
+                        self.stdout.write(f"  [-] Downloading {p['url']} via B2 Authenticated Client...")
+                        try:
+                            import boto3
+                            from botocore.client import Config
 
-                    self.stdout.write(f"  [-] Downloading {p['url']} ...")
-                    img_resp = requests.get(p['url'], timeout=60)
-                    if img_resp.status_code == 200:
-                        with open(target_path, 'wb') as f:
-                            f.write(img_resp.content)
-                        self.stdout.write(self.style.SUCCESS(f"  [+] Saved to {target_path}"))
-                        
-                        # Note: In a real flow, we would then tell the cloud
-                        # to delete the image from B2 to keep the 10GB free.
+                            s3_client = boto3.client(
+                                's3',
+                                endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+                                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                                config=Config(signature_version='s3v4'),
+                                region_name=settings.AWS_S3_REGION_NAME
+                            )
+
+                            s3_client.download_file(
+                                settings.AWS_STORAGE_BUCKET_NAME,
+                                p['b2_key'],
+                                str(target_path)
+                            )
+                            self.stdout.write(self.style.SUCCESS(f"  [+] Saved to {target_path}"))
+                        except Exception as download_err:
+                            self.stdout.write(self.style.ERROR(f"  [!] B2 Download failed: {str(download_err)}"))
+                            continue
                     else:
-                        self.stdout.write(self.style.ERROR(f"  [!] Download failed: {img_resp.status_code}"))
+                        self.stdout.write(f"  [=] File already exists on disk: {target_path.name}")
+
+                    # 2. Always register in Master's local database
+                    # This makes the image appear in the "Staged" count
+                    _, created = Image.objects.get_or_create(
+                        filename=target_path.name,
+                        defaults={
+                            'image': f"staging/{p['label']}/{target_path.name}",
+                            'assigned_label': p['label'],
+                            'is_synced_to_cloud': True,
+                            'added_to_dataset': False
+                        }
+                    )
+                    if created:
+                        self.stdout.write(f"  [+] Registered in database.")
+
+                    # 3. Notify Cloud to clear the queue
+                    try:
+                        requests.post(
+                            f"{broker_url.rstrip('/')}/api/sync/ood/downloaded/",
+                            headers=headers,
+                            json={'image_ids': [p['id']]},
+                            timeout=10
+                        )
+                    except:
+                        pass
             else:
                 self.stdout.write(self.style.ERROR(f"  [!] Cloud error: {resp.text}"))
         except Exception as e:

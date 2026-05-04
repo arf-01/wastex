@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+venv_edge/
 ENV/
 build/
 develop-eggs/
@@ -28,20 +29,19 @@ wheels/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+db_edge.sqlite3
+db_master.sqlite3
 /media/*
 !/media/.gitkeep
+/storage/*
+!/storage/.gitkeep
+/backup_old/
 /staticfiles/
 /static/
 
 # ML Models (large binary files — never commit these)
-models/*.keras
-models/*.pt
-models/*.pth
-models/*.h5
-models/*.pkl
-models/*.joblib
-models/*.weights.h5
-models/versions/*
+models/
+!models/.gitkeep
 !models/versions/.gitkeep
 
 # Datasets (too large for git)

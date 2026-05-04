@@ -4,91 +4,113 @@
 {% block topbar_title %}Dataset{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle">Manage dataset versions and browse class images</span>{% endblock %}
 {% block topbar_right %}
+    <button class="btn btn-sm" onclick="triggerCloudFetch()" id="btnFetchCloud">☁ Fetch from Cloud</button>
     <button class="btn btn-sm" onclick="showRegisterModal()">Register Existing</button>
     <button class="btn btn-sm btn-primary" onclick="showCreateModal()">+ New Version</button>
 {% endblock %}
 
 {% block extra_css %}
-<style>
+    /* ── Hero Banner (Wow Effect) ── */
+    .hero-banner {
+        position: relative; overflow: hidden;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+        border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 40px 48px; margin-bottom: 32px;
+        display: flex; align-items: center; justify-content: space-between;
+        backdrop-filter: var(--glass-filter); box-shadow: var(--shadow-md);
+    }
+    .hero-banner::before {
+        content: ''; position: absolute; inset: -50%;
+        background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.2), transparent 50%),
+                    radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.15), transparent 40%);
+        animation: rotateMesh 40s linear infinite reverse; opacity: 0.8;
+    }
+    @keyframes rotateMesh { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .hero-text { position: relative; z-index: 1; }
+    .hero-text h2 {
+        font-size: 32px; font-weight: 800; margin-bottom: 12px;
+        background: linear-gradient(to right, #60a5fa, #34d399);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+    }
+    .hero-text p { font-size: 15px; color: var(--text-secondary); max-width: 500px; line-height: 1.6; }
+
     .staged-banner {
-        background: var(--yellow-50); border: 1px solid var(--yellow-400); border-radius: var(--radius);
-        padding: 16px 20px; margin-bottom: 24px;
-        display: flex; align-items: center; justify-content: space-between;
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between;
+        backdrop-filter: var(--glass-filter); box-shadow: var(--shadow-md);
+        border-left: 4px solid var(--warning);
     }
-    .staged-banner-left h3 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-    .staged-banner-left p { font-size: 12px; color: #92400e; }
-    .staged-count { font-size: 28px; font-weight: 700; color: #92400e; }
-    .versions-title {
-        font-size: 14px; font-weight: 600; margin-bottom: 16px;
-        display: flex; align-items: center; justify-content: space-between;
-    }
+    .staged-banner-left h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .staged-banner-left p { font-size: 13px; color: var(--text-secondary); }
+    .staged-count { font-size: 36px; font-weight: 800; color: var(--warning); text-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+
+    .versions-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); }
+    
     .version-card {
         background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 20px 24px; margin-bottom: 12px; cursor: pointer;
-        transition: all var(--transition); box-shadow: var(--shadow-sm);
+        padding: 24px; margin-bottom: 16px; cursor: pointer; transition: all var(--transition); box-shadow: var(--shadow-sm); backdrop-filter: var(--glass-filter);
+        display: flex; flex-direction: column; gap: 12px;
     }
-    .version-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
-    .version-card.active { border-color: var(--primary); box-shadow: 0 0 0 2px var(--green-100); }
-    .version-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .version-name { font-size: 16px; font-weight: 700; }
-    .version-meta { font-size: 12px; color: var(--text-muted); }
-    .version-stats { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; }
-    .version-stat { display: flex; align-items: center; gap: 4px; }
-    .version-stat strong { color: var(--text); }
+    .version-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); border-color: var(--primary); }
+    .version-card.active { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.15); }
+    .version-header { display: flex; align-items: center; justify-content: space-between; }
+    .version-name { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .version-meta { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .version-stats { display: flex; gap: 24px; font-size: 14px; color: var(--text-secondary); }
+    .version-stat strong { color: var(--text); font-weight: 700; }
     .tab {
         padding: 8px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
         background: var(--surface); font-size: 13px; font-family: inherit;
-        cursor: pointer; color: var(--text-secondary); transition: all var(--transition);
+        cursor: pointer; color: var(--text-secondary); transition: all var(--transition); backdrop-filter: var(--glass-filter);
     }
-    .tab:hover { background: var(--gray-100); color: var(--text); }
-    .tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .tab:hover { background: var(--surface-hover); color: var(--text); }
+    .tab.active { background: linear-gradient(135deg, var(--primary), #059669); color: #fff; border-color: transparent; }
     .browser-section { display: none; margin-top: 24px; }
-    .class-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 10px; margin-bottom: 24px;
-    }
+    .class-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 24px; }
     .class-card {
         background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-        padding: 12px 16px; cursor: pointer; transition: all var(--transition); text-align: center;
-        box-shadow: var(--shadow-sm);
+        padding: 12px 16px; cursor: pointer; transition: all var(--transition); text-align: center; box-shadow: var(--shadow-sm); backdrop-filter: var(--glass-filter);
     }
-    .class-card:hover { border-color: var(--gray-300); box-shadow: var(--shadow-md); }
-    .class-card.active { border-color: var(--primary); }
-    .class-card-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; text-transform: capitalize; }
-    .class-card-count { font-size: 20px; font-weight: 700; }
-    .ds-image-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 8px; margin-bottom: 24px;
-    }
+    .class-card:hover { background: var(--surface-hover); transform: translateY(-2px); }
+    .class-card.active { border-color: var(--primary); background: var(--primary-light); }
+    .class-card-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; text-transform: capitalize; color: var(--text); }
+    .class-card-count { font-size: 20px; font-weight: 700; color: var(--primary); }
+    .ds-image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 24px; }
     .img-thumb {
         width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm);
-        background: var(--gray-100); display: block; border: 1px solid var(--border); cursor: pointer;
+        background: var(--input-bg); display: block; border: 1px solid var(--border); cursor: pointer; transition: transform var(--transition);
     }
-    .img-thumb:hover { border-color: var(--gray-300); box-shadow: var(--shadow-md); }
+    .img-thumb:hover { border-color: var(--primary); transform: scale(1.02); }
     .img-name { font-size: 10px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lightbox-overlay {
-        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-        z-index: 200; justify-content: center; align-items: center; cursor: pointer;
-    }
+    .lightbox-overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 200; justify-content: center; align-items: center; cursor: pointer; backdrop-filter: blur(8px); }
     .lightbox-overlay.active { display: flex; }
-    .lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
-    @media (max-width: 640px) {
-        .class-grid { grid-template-columns: repeat(2, 1fr); }
-        .ds-image-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-</style>
+    .lightbox-img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+    @media (max-width: 640px) { .class-grid { grid-template-columns: repeat(2, 1fr); } .ds-image-grid { grid-template-columns: repeat(3, 1fr); } }
 {% endblock %}
 
 {% block content %}
+    <!-- Global Intelligence Hero -->
+    <div class="hero-banner">
+        <div class="hero-text">
+            <h2>Global Intelligence Center</h2>
+            <p>Aggregate and refine edge telemetry into high-performance dataset versions. Scale your computer vision intelligence across the entire waste network.</p>
+        </div>
+        <div class="hero-visual">
+            <div class="brand-icon" style="width: 80px; height: 80px; font-size: 40px;">📂</div>
+        </div>
+    </div>
+
     <!-- Staged images banner -->
     <div class="staged-banner" id="stagedBanner" style="display:none;">
         <div class="staged-banner-left">
-            <h3>Staged Images</h3>
-            <p id="stagedDetail">Labeled OOD images ready to be added to a new dataset version</p>
+            <h3>Staged Image Pipeline</h3>
+            <p id="stagedDetail">Newly classified edge data is currently pending integration into the master dataset.</p>
         </div>
-        <div style="display:flex;align-items:center;gap:16px;">
+        <div style="display:flex;align-items:center;gap:24px;">
             <div class="staged-count" id="stagedCount">0</div>
-            <button class="btn btn-sm btn-primary" onclick="showCreateModal()">Create New Version</button>
+            <button class="btn btn-primary" onclick="showCreateModal()">Generate Version</button>
         </div>
     </div>
 
@@ -210,18 +232,25 @@
                 for (var i = 0; i < versions.length; i++) {
                     var v = versions[i], isActive = v.name === selectedVersion, classNames = v.classes || [];
                     var splitsStr = (v.splits && v.splits.length) ? v.splits.join(', ') : 'flat';
-                    html += '<div class="version-card' + (isActive ? ' active' : '') + '" onclick="selectVersion(\'' + v.name + '\')">';
-                    html += '<div class="version-header"><div><span class="version-name">' + v.name + '</span> <span class="tag tag-version">VERSION</span>';
-                    if (v.is_active) html += ' <span class="tag tag-active">★ ACTIVE</span>';
-                    html += '</div><span class="version-meta">' + new Date(v.created_at).toLocaleDateString() + '</span></div>';
-                    html += '<div class="version-stats"><div class="version-stat"><strong>' + v.total_images + '</strong> images</div>';
-                    html += '<div class="version-stat"><strong>' + classNames.length + '</strong> classes</div>';
-                    html += '<div class="version-stat">splits: <strong>' + splitsStr + '</strong></div>';
-                    if (v.parent) html += '<div class="version-stat">from <strong>' + v.parent + '</strong></div>';
-                    html += '</div>';
-                    if (v.notes) html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px">' + v.notes + '</div>';
-                    if (!v.is_active) html += '<button class="btn btn-sm" style="margin-top:8px" onclick="event.stopPropagation();activateVersion(\'' + v.name + '\')">Set as Active</button>';
-                    html += '</div>';
+                    var activeBadge = v.is_active ? '<span style="color: var(--primary); font-size: 10px; font-weight: 800;">★ ACTIVE PRODUCTION</span>' : '';
+                    
+                    html += '<div class="version-card' + (isActive ? ' active' : '') + '" onclick="selectVersion(\'' + v.name + '\')">' +
+                        '<div class="version-header">' +
+                            '<div><span class="version-name">' + v.name + '</span></div>' +
+                            '<span class="version-meta">' + new Date(v.created_at).toLocaleDateString() + '</span>' +
+                        '</div>' +
+                        '<div class="version-stats">' +
+                            '<div class="version-stat"><strong>' + v.total_images + '</strong> images</div>' +
+                            '<div class="version-stat"><strong>' + classNames.length + '</strong> classes</div>' +
+                            '<div class="version-stat">Splits: <strong>' + splitsStr + '</strong></div>' +
+                        '</div>' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">' +
+                            '<div>' + activeBadge + '</div>';
+                    
+                    if (!v.is_active) {
+                        html += '<button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();activateVersion(\'' + v.name + '\')">Deploy to Edge</button>';
+                    }
+                    html += '</div></div>';
                 }
                 list.innerHTML = html;
                 var sel = document.getElementById('versionParent');
@@ -353,6 +382,28 @@
     function openLightbox(url) { document.getElementById('lightboxImg').src = url; document.getElementById('lightbox').classList.add('active'); }
     function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { closeLightbox(); closeCreateModal(); closeRegisterModal(); } });
+    function triggerCloudFetch() {
+        const btn = document.getElementById('btnFetchCloud');
+        btn.disabled = true;
+        btn.innerText = 'Fetching...';
+
+        fetch('/api/local/sync/pull/', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(data.message, 'success');
+                    loadVersions(); // Refresh stats
+                } else {
+                    showToast('Error: ' + (data.error || 'Unknown'), 'error');
+                }
+            })
+            .catch(err => showToast('Network error', 'error'))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = '☁ Fetch from Cloud';
+            });
+    }
+
     loadVersions();
 </script>
 {% endblock %}

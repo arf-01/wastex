@@ -46,10 +46,16 @@ ALLOWED_CONTENT_TYPES = frozenset({
 # ---------------------------------------------------------------------------
 
 def get_all_class_names() -> List[str]:
-    """Return the canonical class-name list from the database."""
+    """Return a unique merged list of classes from model and database."""
     from classifier.models import DatasetClass
 
-    return list(DatasetClass.objects.values_list("name", flat=True))
+    db_classes = set(DatasetClass.objects.values_list("name", flat=True))
+    model_classes = set(MODEL_CLASS_NAMES)
+    
+    # Merge and sort, keeping 'OOD' or 'Anomaly' at the end if desired, 
+    # but usually alphabetically is best.
+    merged = sorted(list(db_classes | model_classes))
+    return merged
 
 
 def parse_json_body(request) -> Dict[str, Any]:

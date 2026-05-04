@@ -4,110 +4,146 @@
 {% block topbar_title %}Dashboard{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle" id="lastUpdated"></span>{% endblock %}
 {% block topbar_right %}
-    <a href="{% url 'edge_upload' %}" class="btn btn-primary btn-sm">📷 Classify Image</a>
+    <a href="{% url 'edge_upload' %}" class="btn btn-ghost btn-sm" style="opacity: 0.6; font-size: 12px;" title="Manual Upload (Testing Only)">🧪 Test Upload</a>
 {% endblock %}
 
 {% block extra_css %}
-<style>
-    .upload-cta {
-        display: flex; align-items: center; justify-content: space-between;
-        background: var(--primary-light); border: 1px solid var(--green-200);
-        border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px;
+    /* ── Hero Banner (Wow Effect) ── */
+    .hero-banner {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1));
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 40px 48px;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        backdrop-filter: var(--glass-filter);
+        box-shadow: var(--shadow-md);
     }
-    .upload-cta-text h2 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: var(--green-800); }
-    .upload-cta-text p { font-size: 13px; color: var(--green-700); }
+    .hero-banner::before {
+        content: ''; position: absolute; inset: -50%;
+        background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.2), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.15), transparent 40%);
+        animation: rotateMesh 30s linear infinite;
+        opacity: 0.8;
+    }
+    @keyframes rotateMesh { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .hero-text { position: relative; z-index: 1; }
+    .hero-text h2 {
+        font-size: 32px; font-weight: 800; margin-bottom: 12px;
+        background: linear-gradient(to right, #34d399, #60a5fa);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+    }
+    .hero-text p { font-size: 15px; color: var(--text-secondary); max-width: 500px; line-height: 1.6; }
+
+    /* ── Filter Bar ── */
     .filter-bar {
-        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;
-        flex-wrap: wrap; box-shadow: var(--shadow-sm);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 16px 24px;
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        backdrop-filter: var(--glass-filter);
+        box-shadow: var(--shadow-sm);
     }
-    .filter-bar label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-bar label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
     .filter-bar input[type="datetime-local"], .filter-bar select {
-        border: 1px solid var(--gray-300); border-radius: 4px; padding: 6px 10px;
-        font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface);
+        border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px;
+        font-size: 14px; font-family: inherit; color: var(--text); background: var(--input-bg);
+        transition: border-color 0.2s;
     }
-    .filter-bar input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
-    .filter-sep { width: 1px; height: 24px; background: var(--border); }
-    .count-table { width: 100%; border-collapse: collapse; }
-    .count-table th {
-        text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
-        color: var(--text-muted); padding: 10px 20px; border-bottom: 1px solid var(--border); font-weight: 500;
-    }
-    .count-table td { padding: 12px 20px; border-bottom: 1px solid var(--gray-100); font-size: 13px; }
-    .count-table tr:last-child td { border-bottom: none; }
-    .count-table tr:hover { background: var(--gray-50); }
-    .count-bar-cell { width: 40%; }
-    .count-bar-wrap { background: var(--gray-100); border-radius: 3px; height: 16px; overflow: hidden; }
-    .count-bar { height: 100%; border-radius: 3px; min-width: 2px; transition: width 0.4s ease; }
-    .count-val { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
-    .class-name { display: flex; align-items: center; gap: 8px; }
-    .class-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-    .ood-list { max-height: 480px; overflow-y: auto; }
-    .ood-item {
-        display: flex; align-items: center; gap: 14px; padding: 12px 20px;
-        border-bottom: 1px solid var(--gray-100); cursor: pointer; transition: background var(--transition);
-    }
-    .ood-item:hover { background: var(--gray-50); }
-    .ood-item:last-child { border-bottom: none; }
-    .ood-thumb {
-        width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover;
-        background: var(--gray-100); flex-shrink: 0; border: 1px solid var(--gray-200);
-    }
-    .ood-info { flex: 1; min-width: 0; }
-    .ood-filename { font-size: 13px; font-weight: 500; color: var(--gray-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ood-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-    .ood-energy { font-size: 12px; font-weight: 600; color: var(--red-500); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .ood-pagination {
-        padding: 10px 20px; border-top: 1px solid var(--border);
-        display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-muted);
-    }
-    .ood-pagination .pagination-btns { display: flex; gap: 4px; }
-    .ood-pagination .pagination-btns button {
-        padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px;
-        background: var(--surface); font-size: 12px; cursor: pointer; font-family: inherit;
-    }
-    .ood-pagination .pagination-btns button:hover { background: var(--gray-100); }
-    .ood-pagination .pagination-btns button:disabled { opacity: 0.3; cursor: default; }
-    .modal-img { width: 100%; border-radius: var(--radius-sm); margin-bottom: 16px; background: var(--gray-50); }
-    .logits-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-    .logits-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 10px; }
-    .bins-container {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;
-    }
+    .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
+    .filter-sep { width: 1px; height: 28px; background: var(--border); margin: 0 8px; }
+
+    /* ── Bin Grid ── */
+    .bin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; margin-bottom: 40px; }
     .bin-card {
-        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px;
-        display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-sm);
-        cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition); text-decoration: none;
+        background: var(--surface);
+        border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 24px; cursor: pointer; transition: all var(--transition);
+        display: flex; flex-direction: column; gap: 16px; backdrop-filter: var(--glass-filter);
+        text-decoration: none;
     }
-    .bin-card:hover { box-shadow: var(--shadow-md); border-color: var(--gray-300); }
-    .bin-header { display: flex; align-items: center; justify-content: space-between; }
-    .bin-name { font-weight: 600; font-size: 14px; color: var(--text); }
-    .bin-status { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .status-dot.online { background: var(--green-500); box-shadow: 0 0 0 2px rgba(22,163,74,.2); }
-    .status-dot.offline { background: var(--red-400); }
-    .bin-stats { display: flex; gap: 16px; }
-    .bin-stat { display: flex; flex-direction: column; gap: 1px; }
-    .bin-stat-val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
-    .bin-stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
-    .bin-ood-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
-        border-radius: 9999px; font-size: 11px; font-weight: 600; background: #fef3c7; color: #92400e; }
-    .bin-ood-badge.none { background: var(--gray-100); color: var(--text-muted); }
-    .bin-time { font-size: 11px; color: var(--text-muted); }
-    @media (max-width: 768px) {
-        .upload-cta { flex-direction: column; gap: 12px; align-items: flex-start; }
+    .bin-card:hover { transform: translateY(-6px); box-shadow: 0 12px 24px -10px rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); }
+    .bin-header { display: flex; align-items: flex-start; justify-content: space-between; }
+    .bin-info h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .bin-info p { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .status-pill {
+        display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+        border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+        border: 1px solid var(--border); background: var(--header-bg);
     }
-</style>
+    .status-pill.online { color: var(--primary); border-color: rgba(16, 185, 129, 0.2); }
+    .status-pill.offline { color: var(--text-muted); }
+    
+    .status-indicator {
+        width: 8px; height: 8px; border-radius: 50%;
+    }
+    .online .status-indicator { 
+        background: var(--primary); 
+        box-shadow: 0 0 12px var(--primary); 
+        animation: statusPulse 2s infinite;
+    }
+    .offline .status-indicator { background: var(--text-muted); }
+    
+    @keyframes statusPulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    
+    .bin-stats { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .bin-stat-item { display: flex; flex-direction: column; gap: 2px; }
+    .bin-stat-val { font-size: 20px; font-weight: 800; color: var(--text); }
+    .bin-stat-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+
+    /* ── Summary Cards ── */
+    .summary-card {
+        background: var(--surface);
+        border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;
+        box-shadow: var(--shadow-sm); backdrop-filter: var(--glass-filter);
+        transition: transform var(--transition);
+    }
+    .summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .summary-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); font-weight: 600; margin-bottom: 8px; }
+    .summary-card .value { font-size: 36px; font-weight: 700; color: var(--text); line-height: 1; font-family: 'Outfit', sans-serif; }
+    .summary-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-weight: 500; }
+
+    /* ── Tables & Lists ── */
+    .count-table { width: 100%; border-collapse: collapse; }
+    .count-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); padding: 16px 24px; border-bottom: 1px solid var(--border); font-weight: 600; }
+    .count-table td { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .count-table tr:hover td { background: var(--surface-hover); }
+    .count-bar-cell { width: 45%; }
+    .count-bar-wrap { background: var(--input-bg); border-radius: 4px; height: 8px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
+    .count-bar { height: 100%; border-radius: 4px; min-width: 2px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .count-val { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; font-family: 'Outfit', sans-serif; font-size: 16px; }
+    .class-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+    .class-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
 {% endblock %}
 
 {% block content %}
-    <!-- Upload CTA -->
-    <div class="upload-cta">
-        <div class="upload-cta-text">
-            <h2>♻️ Classify an Image</h2>
-            <p>Upload a waste image to classify it or detect out-of-distribution samples</p>
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-text">
+            <h2>🌍 Live Edge Intelligence</h2>
+            <p>Real-time telemetry and classification tracking across your fleet.</p>
         </div>
-        <a href="{% url 'edge_upload' %}" class="btn btn-primary">Upload &amp; Classify</a>
+        <div style="position: relative; z-index: 1;">
+            <div style="width: 56px; height: 56px; background: var(--primary-light); border: 1px solid var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--primary-light);">
+                <span style="font-size: 24px; animation: pulse 2s infinite;">📡</span>
+            </div>
+        </div>
     </div>
 
     <!-- Filter Bar -->
@@ -122,90 +158,56 @@
         <label>To</label>
         <input type="datetime-local" id="filterTo">
         <div class="filter-sep"></div>
-        <button class="btn btn-sm btn-primary" onclick="applyFilters()">Query</button>
+        <button class="btn btn-sm btn-primary" onclick="applyFilters()">Query Data</button>
         <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Reset</button>
     </div>
 
     <!-- Active Bins -->
-    <h3 style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 12px;">Active Bins</h3>
-    <div class="bins-container" id="binsContainer">
-        <div class="empty-state" style="grid-column: 1 / -1; padding: 24px;"><div class="spinner"></div></div>
+    <h3 style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 16px; font-family: 'Outfit', sans-serif;">Active Bins Dashboard</h3>
+    <div class="bin-grid" id="binsContainer">
+        <div class="empty-state" style="grid-column: 1 / -1; padding: 32px;"><div class="spinner"></div></div>
     </div>
 
     <!-- Summary Cards -->
-    <div class="grid-4" style="margin-bottom:24px;">
+    <div class="grid-4" style="margin-bottom:32px;">
         <div class="summary-card">
             <div class="label">Total Classified</div>
             <div class="value" id="totalCount">-</div>
-            <div class="sub">in-distribution</div>
+            <div class="sub">in-distribution items</div>
         </div>
         <div class="summary-card">
-            <div class="label">OOD Detected</div>
-            <div class="value" id="oodCount">-</div>
-            <div class="sub">out-of-distribution</div>
+            <div class="label">Anomalies Detected</div>
+            <div class="value" id="oodCount" style="color: #38bdf8;">-</div>
+            <div class="sub">awaiting inspection</div>
         </div>
         <div class="summary-card">
-            <div class="label">Classes Active</div>
+            <div class="label">Active Classes</div>
             <div class="value" id="activeClasses">-</div>
-            <div class="sub">of {{ class_names|length }}</div>
+            <div class="sub">of {{ class_names|length }} supported</div>
         </div>
         <div class="summary-card">
-            <div class="label">Top Class</div>
-            <div class="value" id="topClass" style="font-size:15px;font-weight:600;margin-top:4px;">-</div>
+            <div class="label">Dominant Class</div>
+            <div class="value" id="topClass" style="font-size:24px;margin-top:10px;">-</div>
             <div class="sub" id="topClassCount"></div>
         </div>
     </div>
 
-    <!-- Two Panels -->
-    <div class="grid-2">
+    <!-- Single Panel for Metrics -->
+    <div class="grid-1">
         <!-- Classification Counts -->
         <div class="panel">
             <div class="panel-header">
-                <h2>Classification Counts</h2>
-                <span class="badge" id="countBadge">0</span>
+                <h2>Class Distribution</h2>
+                <span class="badge" id="countBadge">0 items</span>
             </div>
             <div>
                 <table class="count-table">
-                    <thead><tr><th>Class</th><th>Count</th><th class="count-bar-cell">Distribution</th></tr></thead>
+                    <thead><tr><th>Class</th><th>Count</th><th class="count-bar-cell">Volume</th></tr></thead>
                     <tbody id="countTableBody">
                         <tr><td colspan="3"><div class="empty-state"><div class="spinner"></div></div></td></tr>
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- OOD Detections -->
-        <div class="panel">
-            <div class="panel-header">
-                <h2>OOD Detections</h2>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span class="badge" id="oodBadge">0</span>
-                    <a href="{% url 'edge_inspect' %}" class="btn btn-sm">Inspect</a>
-                </div>
-            </div>
-            <div>
-                <div class="ood-list" id="oodList">
-                    <div class="empty-state"><div class="spinner"></div></div>
-                </div>
-                <div class="ood-pagination" id="oodPagination" style="display:none;">
-                    <span id="oodPageInfo"></span>
-                    <div class="pagination-btns">
-                        <button id="oodPrev" onclick="loadOOD(currentOodPage-1)">Prev</button>
-                        <button id="oodNext" onclick="loadOOD(currentOodPage+1)">Next</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- OOD Detail Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3 id="modalTitle">Image Detail</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 {% endblock %}
@@ -213,9 +215,7 @@
 {% block extra_js %}
 <script>
     var CLASS_NAMES = JSON.parse('{{ class_names_json|escapejs }}');
-    var CLASS_COLORS = ['#16a34a','#3b82f6','#22c55e','#ef4444','#f59e0b','#8b5cf6','#ec4899','#06b6d4'];
-    var currentOodPage = 1;
-    var oodDataCache = [];
+    var CLASS_COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#14b8a6', '#f43f5e'];
 
     function getFilterParams() {
         var from = document.getElementById('filterFrom').value;
@@ -237,35 +237,46 @@
                 var selectedBin = select.value;
 
                 if (data.bins.length === 0) {
-                    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">📡</div>No bins connected yet. Check your Pi config.</div>';
+                    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1; padding: 48px;"><div class="empty-state-icon" style="font-size: 48px; opacity: 0.5;">📡</div><div style="font-size: 16px; margin-top: 16px; color: var(--text-secondary);">No edge nodes connected yet.</div></div>';
                     return;
                 }
 
                 var html = '';
-                var selectHtml = '<option value="">All Bins</option>';
+                var selectHtml = '<option value="">All Connected Bins</option>';
 
                 data.bins.forEach(function(b) {
-                    var dotClass = b.is_online ? 'online' : 'offline';
+                    var statusClass = b.is_online ? 'online' : 'offline';
                     var statusText = b.is_online ? 'Online' : 'Offline';
                     var timeStr = b.last_active ? new Date(b.last_active).toLocaleTimeString() : 'Never';
-                    var oodBadge = b.ood_pending > 0
-                        ? '<span class="bin-ood-badge">⚠ ' + b.ood_pending + ' pending OOD</span>'
-                        : '<span class="bin-ood-badge none">No pending OODs</span>';
-
-                    html += '<div class="bin-card" onclick="selectBin(\'' + b.bin_id + '\')"><div class="bin-header">' +
-                        '<span class="bin-name">📡 ' + b.bin_id + '</span>' +
-                        '<span class="bin-status"><div class="status-dot ' + dotClass + '"></div>' + statusText + '</span>' +
-                    '</div>' +
-                    '<div class="bin-stats">' +
-                        '<div class="bin-stat"><div class="bin-stat-val">' + b.trash_count + '</div><div class="bin-stat-label">Items</div></div>' +
-                        '<div class="bin-stat"><div class="bin-stat-val">' + b.ood_count + '</div><div class="bin-stat-label">OODs</div></div>' +
-                    '</div>' +
-                    oodBadge +
-                    '<div class="bin-time">Last active: ' + timeStr + '</div>' +
+                    
+                    html += '<div class="bin-card" onclick="selectBin(\'' + b.bin_id + '\')">' +
+                        '<div class="bin-header">' +
+                            '<div class="bin-info">' +
+                                '<h3>Bin ' + b.bin_id + '</h3>' +
+                                '<p>Edge Node ID: ' + b.bin_id + '</p>' +
+                            '</div>' +
+                            '<div class="status-pill ' + statusClass + '">' +
+                                '<div class="status-indicator"></div>' +
+                                statusText +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="bin-stats">' +
+                            '<div class="bin-stat-item">' +
+                                '<div class="bin-stat-val">' + b.trash_count + '</div>' +
+                                '<div class="bin-stat-lbl">Total Scans</div>' +
+                            '</div>' +
+                            '<div class="bin-stat-item">' +
+                                '<div class="bin-stat-val" style="color: var(--accent);">' + b.ood_count + '</div>' +
+                                '<div class="bin-stat-lbl">Anomalies</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">' +
+                            '<div style="font-size: 10px; color: var(--text-muted);">Sync: ' + timeStr + '</div>' +
+                        '</div>' +
                     '</div>';
 
                     var sel = (b.bin_id === selectedBin) ? ' selected' : '';
-                    selectHtml += '<option value="' + b.bin_id + '"' + sel + '>' + b.bin_id + ' (' + b.trash_count + ' items)</option>';
+                    selectHtml += '<option value="' + b.bin_id + '"' + sel + '>' + b.bin_id + ' (' + b.trash_count + ' scans)</option>';
                 });
 
                 container.innerHTML = html;
@@ -290,90 +301,44 @@
                 var active = values.filter(function(v) { return v > 0; }).length;
                 document.getElementById('totalCount').textContent = total;
                 document.getElementById('activeClasses').textContent = active;
-                document.getElementById('countBadge').textContent = total;
+                document.getElementById('countBadge').textContent = total + ' items';
                 var topName = '-', topVal = 0;
                 for (var key in counts) { if (counts[key] > topVal) { topName = key; topVal = counts[key]; } }
                 document.getElementById('topClass').textContent = topVal > 0 ? topName : '-';
-                document.getElementById('topClassCount').textContent = topVal > 0 ? topVal + ' items' : '';
+                document.getElementById('topClassCount').textContent = topVal > 0 ? topVal + ' items matched' : '';
                 var entries = [];
                 for (var c in counts) entries.push([c, counts[c]]);
                 entries.sort(function(a, b) { return b[1] - a[1]; });
                 var tbody = document.getElementById('countTableBody');
-                if (total === 0) { tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state"><div class="empty-state-icon">📊</div>No classifications yet</div></td></tr>'; return; }
+                if (total === 0) { tbody.innerHTML = '<tr><td colspan="3"><div class="empty-state" style="padding: 48px;"><div class="empty-state-icon" style="font-size: 32px; opacity: 0.3;">📊</div><div>No classifications found for this period</div></div></td></tr>'; return; }
                 var html = '';
                 for (var i = 0; i < entries.length; i++) {
                     var name = entries[i][0], count = entries[i][1], color = CLASS_COLORS[i % CLASS_COLORS.length];
                     var pct = (count / maxCount * 100).toFixed(1);
-                    html += '<tr><td><div class="class-name"><div class="class-dot" style="background:' + color + '"></div>' + name + '</div></td>' +
+                    html += '<tr><td><div class="class-name"><div class="class-dot" style="background:' + color + '; color: ' + color + ';"></div>' + name + '</div></td>' +
                         '<td class="count-val">' + count + '</td>' +
-                        '<td class="count-bar-cell"><div class="count-bar-wrap"><div class="count-bar" style="width:' + pct + '%;background:' + color + '"></div></div></td></tr>';
+                        '<td class="count-bar-cell"><div class="count-bar-wrap"><div class="count-bar" style="width:' + pct + '%; background: linear-gradient(90deg, ' + color + '88, ' + color + '); box-shadow: 0 0 8px ' + color + '44;"></div></div></td></tr>';
                 }
                 tbody.innerHTML = html;
             })
-            .catch(function(e) { console.error('loadCounts error:', e); document.getElementById('countTableBody').innerHTML = '<tr><td colspan="3" class="empty-state">Failed to load data</td></tr>'; });
+            .catch(function(e) { console.error('loadCounts error:', e); });
     }
 
-    function loadOOD(page) {
-        page = page || 1; currentOodPage = page;
+    function loadOODCountOnly() {
         var params = getFilterParams();
-        fetch('/api/ood/?page=' + page + '&per_page=15&_=' + Date.now() + params)
+        fetch('/api/ood/?per_page=1&_=' + Date.now() + params)
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 document.getElementById('oodCount').textContent = data.total;
-                document.getElementById('oodBadge').textContent = data.total;
-                if (data.unreviewed !== undefined && data.unreviewed > 0) document.getElementById('oodBadge').textContent = data.unreviewed + ' pending';
-                oodDataCache = data.images;
-                var list = document.getElementById('oodList');
-                if (data.images.length === 0) { list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div>No OOD images detected</div>'; document.getElementById('oodPagination').style.display = 'none'; return; }
-                var html = '';
-                for (var i = 0; i < data.images.length; i++) {
-                    var img = data.images[i], dateStr = new Date(img.uploaded_at).toLocaleString();
-                    var energyStr = img.energy !== null ? img.energy.toFixed(3) : '-';
-                    var reviewedTag = img.reviewed ? '<span style="font-size:10px;color:var(--green-500);font-weight:600;">✓ Reviewed</span>' : '<span style="font-size:10px;color:#f59e0b;font-weight:600;">● Pending</span>';
-                    html += '<div class="ood-item" onclick="showOODByIndex(' + i + ')">' +
-                        '<img class="ood-thumb" src="' + (img.image_url || '') + '" onerror="this.style.display=\'none\'" alt="">' +
-                        '<div class="ood-info"><div class="ood-filename">' + img.filename + '</div><div class="ood-meta">' + dateStr + ' · ' + reviewedTag + '</div></div>' +
-                        '<div class="ood-energy">' + energyStr + '</div></div>';
-                }
-                list.innerHTML = html;
-                var pag = document.getElementById('oodPagination');
-                if (data.pages > 1) { pag.style.display = 'flex'; document.getElementById('oodPageInfo').textContent = 'Page ' + data.page + ' of ' + data.pages + ' · ' + data.total + ' items'; document.getElementById('oodPrev').disabled = data.page <= 1; document.getElementById('oodNext').disabled = data.page >= data.pages; }
-                else { pag.style.display = 'none'; }
-            })
-            .catch(function(e) { console.error('loadOOD error:', e); document.getElementById('oodList').innerHTML = '<div class="empty-state">Failed to load OOD data</div>'; });
+            });
     }
 
-    function showOODByIndex(idx) {
-        var img = oodDataCache[idx]; if (!img) return;
-        document.getElementById('modalTitle').textContent = img.filename;
-        var logitsHtml = '<div style="color:var(--text-muted);font-size:13px">No logits available</div>';
-        if (img.logits && img.logits.length) {
-            var maxAbs = 1;
-            for (var j = 0; j < img.logits.length; j++) { var a = Math.abs(img.logits[j]); if (a > maxAbs) maxAbs = a; }
-            logitsHtml = '';
-            for (var j = 0; j < img.logits.length; j++) {
-                var v = img.logits[j], pct = (Math.abs(v) / maxAbs * 100).toFixed(1), cls = v < 0 ? ' negative' : '';
-                logitsHtml += '<div class="logit-row"><span class="logit-name">' + (CLASS_NAMES[j] || 'Class ' + j) + '</span><div class="logit-bar-wrap"><div class="logit-bar' + cls + '" style="width:' + pct + '%"></div></div><span class="logit-val">' + v.toFixed(4) + '</span></div>';
-            }
-        }
-        var bodyHtml = '';
-        if (img.image_url) bodyHtml += '<img class="modal-img" src="' + img.image_url + '" alt="">';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="tag tag-ood">OOD</span></span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Energy Score</span><span class="detail-value" style="color:var(--red-500)">' + (img.energy !== null ? img.energy.toFixed(6) : '-') + '</span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Dimensions</span><span class="detail-value">' + (img.width || '-') + ' × ' + (img.height || '-') + '</span></div>';
-        bodyHtml += '<div class="detail-row"><span class="detail-label">Uploaded</span><span class="detail-value">' + new Date(img.uploaded_at).toLocaleString() + '</span></div>';
-        bodyHtml += '<div class="logits-section"><div class="logits-title">Logits</div>' + logitsHtml + '</div>';
-        document.getElementById('modalBody').innerHTML = bodyHtml;
-        document.getElementById('modalOverlay').classList.add('active');
-    }
-
-    function closeModal(e) { if (!e || e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('active'); }
-    function applyFilters() { loadCounts(); loadOOD(1); }
+    function applyFilters() { loadCounts(); loadOODCountOnly(); }
     function resetFilters() { document.getElementById('filterFrom').value = ''; document.getElementById('filterTo').value = ''; document.getElementById('filterBin').value = ''; applyFilters(); }
 
     function init() {
-        loadBins(); loadCounts(); loadOOD(1);
-        document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        loadBins(); loadCounts(); loadOODCountOnly();
+        document.getElementById('lastUpdated').textContent = 'Last synced: ' + new Date().toLocaleTimeString();
     }
     init();
     setInterval(init, 30000);

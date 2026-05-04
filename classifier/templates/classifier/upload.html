@@ -132,13 +132,8 @@
         const detailsHtml = '<div class="detail-row"><span class="detail-label">Energy Score</span><span class="detail-value">' + data.energy.toFixed(6) + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">OOD Detected</span><span class="detail-value">' + (data.ood ? 'Yes' : 'No') + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Saved to DB</span><span class="detail-value">' + (data.saved_to_db ? 'Yes' : 'No') + '</span></div>';
-        const maxAbs = Math.max(...data.logits.map(v => Math.abs(v)), 1);
-        const logitsHtml = data.logits.map((v, i) => {
-            const pct = Math.abs(v) / maxAbs * 100;
-            const cls = v < 0 ? 'negative' : '';
-            return '<div class="logit-row"><span class="logit-name">' + (CLASS_NAMES[i] || 'Class ' + i) + '</span><div class="logit-bar-wrap"><div class="logit-bar ' + cls + '" style="width:' + pct + '%"></div></div><span class="logit-val">' + v.toFixed(4) + '</span></div>';
-        }).join('');
-        body.innerHTML = verdictHtml + detailsHtml + '<div class="logits-section"><div class="logits-title">Logits</div>' + logitsHtml + '</div>';
+        
+        body.innerHTML = verdictHtml + detailsHtml;
         document.getElementById('result').classList.add('active');
         showToast(data.ood ? 'OOD detected — saved for review' : 'Classified as ' + data.predicted_class, data.ood ? 'info' : 'success');
     }

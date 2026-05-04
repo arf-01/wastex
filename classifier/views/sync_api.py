@@ -89,13 +89,20 @@ def api_get_pending_images(request):
     if settings.SITE_ROLE != 'CLOUD':
         return JsonResponse({"error": "Cloud role only."}, status=403)
 
+    from django.core.files.storage import default_storage
     pending = PendingImage.objects.filter(is_ready_for_master=True)
     results = []
     for p in pending:
+        # Generate a signed URL that expires in 1 hour
+        try:
+            signed_url = default_storage.url(p.b2_file_key)
+        except:
+            signed_url = f"{settings.MEDIA_URL}{p.b2_file_key}"
+
         results.append({
             "id": p.id,
             "edge_site_id": p.edge_site_id,
-            "url": f"{settings.MEDIA_URL}{p.b2_file_key}",
+            "url": signed_url,
             "b2_key": p.b2_file_key,
             "label": p.label,
             "created_at": p.created_at.isoformat()
@@ -113,10 +120,28 @@ def api_mark_downloaded(request):
     if not isinstance(image_ids, list):
         return JsonResponse({"error": "image_ids must be a list."}, status=400)
 
-    # Mark them as no longer ready for master
-    PendingImage.objects.filter(id__in=image_ids).update(is_ready_for_master=False)
+    from django.core.files.storage import default_storage
     
-    return JsonResponse({"status": "success", "marked_count": len(image_ids)})
+    targets = PendingImage.objects.filter(id__in=image_ids)
+    deleted_count = 0
+    
+    for p in targets:
+        # Delete the actual file from Backblaze B2
+        try:
+            if p.b2_file_key:
+                default_storage.delete(p.b2_file_key)
+        except Exception as e:
+            # We log but continue, so we don't block the database cleanup
+            print(f"Failed to delete {p.b2_file_key} from B2: {e}")
+
+    # Remove records from Cloud database
+    count = targets.count()
+    targets.delete()
+    
+    return JsonResponse({
+        "status": "success", 
+        "message": f"Deleted {count} images from Cloud storage and database."
+    })
 
 
 @api_view(['POST'])

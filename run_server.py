@@ -15,9 +15,7 @@ if __name__ == '__main__':
         execute_from_command_line([
             'manage.py',
             'runserver',
-            '0.0.0.0:8000',
-            '--nothreading',
-            '--noreload'
+            '0.0.0.0:8000'
         ])
     except Exception as e:
         print(f"DEBUG: Server crashed with exception: {e}", flush=True)

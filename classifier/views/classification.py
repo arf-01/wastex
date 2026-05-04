@@ -5,6 +5,7 @@ Image classification endpoint — accept an upload, run inference, return result
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -75,31 +76,66 @@ def classify(request):
             status=400,
         )
 
+    import tempfile
+    from django.core.files.storage import default_storage, FileSystemStorage
+
     try:
-        file_path = default_storage.save(
-            f"uploads/{image_file.name}",
-            ContentFile(image_file.read()),
-        )
-        full_path = Path(default_storage.location) / file_path
-        logits, energy, ood = get_logits(str(full_path))
+        # Create a temporary local storage to handle the file for inference
+        # This prevents FileNotFoundError when DEFAULT_FILE_STORAGE is S3
+        with tempfile.NamedTemporaryFile(delete=False, suffix=Path(image_file.name).suffix) as tmp:
+            for chunk in image_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        try:
+            # Perform inference on the local temp file
+            logits, energy, ood = get_logits(tmp_path)
+            
+            # Save the file to permanent storage (S3 or Local)
+            with open(tmp_path, 'rb') as f:
+                file_path = default_storage.save(
+                    f"uploads/{image_file.name}",
+                    ContentFile(f.read()),
+                )
+            
+            # Get the path for metadata if it's local storage
+            if hasattr(default_storage, 'path'):
+                full_path = Path(default_storage.path(file_path))
+            else:
+                full_path = Path(tmp_path) # Use temp file for metadata stats if S3
+        finally:
+            # We'll delete the temp file after we're done or if we fail
+            if os.path.exists(tmp_path):
+                # Only delete if we are ID (otherwise record creation needs stats)
+                # But wait, we can get stats now
+                tmp_stat = os.stat(tmp_path)
+                pass 
+
     except Exception:
         logger.exception("Inference failed for file %s", image_file.name)
         return JsonResponse({"error": "Classification failed."}, status=500)
+    finally:
+        if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            # If it was ID, we already deleted the saved one. 
+            # We always delete tmp eventually.
+            pass
+
+    # Re-reading stats from tmp before it's gone
+    file_size = tmp_stat.st_size
+    from PIL import Image as PILImage
+    with PILImage.open(tmp_path) as img:
+        width, height = img.size
+    
+    os.unlink(tmp_path)
 
     saved = False
     predicted_class = None
 
     if ood:
-        try:
-            with PILImage.open(str(full_path)) as img:
-                width, height = img.size
-        except Exception:
-            width, height = None, None
-
         Image.objects.create(
             image=file_path,
             filename=image_file.name,
-            file_size=full_path.stat().st_size,
+            file_size=file_size,
             width=width,
             height=height,
             all_predictions={

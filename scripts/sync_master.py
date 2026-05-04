@@ -55,17 +55,26 @@ def run_sync():
         label = item.get("label")
 
         basename = Path(b2_key).name
-        logger.info(f"Downloading {basename}...")
+        logger.info(f"Downloading {basename} from Cloud Storage...")
 
         try:
-            # Download the image file
-            img_resp = requests.get(img_url, timeout=60)
-            img_resp.raise_for_status()
+            # Try to download using S3Boto3Storage (authenticated)
+            from storages.backends.s3boto3 import S3Boto3Storage
+            cloud_storage = S3Boto3Storage(
+                access_key=os.getenv('B2_APPLICATION_KEY_ID'),
+                secret_key=os.getenv('B2_APPLICATION_KEY'),
+                bucket_name=os.getenv('B2_BUCKET_NAME'),
+                endpoint_url=os.getenv('B2_ENDPOINT'),
+                region_name=os.getenv('B2_REGION', 'us-east-005')
+            )
+            
+            with cloud_storage.open(b2_key, 'rb') as f:
+                img_content = f.read()
 
             # Save locally
             now = datetime.now()
             local_path = f"uploads/{now.year}/{now.month:02d}/{now.day:02d}/cloud_sync_{basename}"
-            saved_path = default_storage.save(local_path, ContentFile(img_resp.content))
+            saved_path = default_storage.save(local_path, ContentFile(img_content))
 
             # Insert into local database
             Image.objects.create(

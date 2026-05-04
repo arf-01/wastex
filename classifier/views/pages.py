@@ -14,6 +14,8 @@ from django.contrib.auth.decorators import login_required
 from classifier.decorators import edge_required, master_required
 
 
+from django.conf import settings
+
 def _page_context(active_page: str) -> dict:
     """Build the common template context shared by every page."""
     class_names = get_all_class_names()
@@ -21,15 +23,21 @@ def _page_context(active_page: str) -> dict:
         "class_names": class_names,
         "class_names_json": json.dumps(class_names),
         "active_page": active_page,
+        "SITE_ROLE": settings.SITE_ROLE,  # Pass role to UI
     }
 
 @login_required
 def root_redirect(request):
+    """Redirect users to the appropriate landing page based on SITE_ROLE."""
+    if settings.SITE_ROLE == 'MASTER':
+        return redirect('master_dataset')
+    elif settings.SITE_ROLE == 'EDGE':
+        return redirect('edge_dashboard')
+    
+    # Fallback to group-based if role logic isn't enough
     if request.user.groups.filter(name='MasterUsers').exists():
         return redirect('master_dataset')
-    elif request.user.groups.filter(name='EdgeUsers').exists() or request.user.is_superuser:
-        return redirect('edge_dashboard')
-    return redirect('edge_dashboard')  # Fallback
+    return redirect('edge_dashboard')
 
 @login_required
 @edge_required
