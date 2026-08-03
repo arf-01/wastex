@@ -29,6 +29,9 @@ SITE_ROLE = os.getenv('SITE_ROLE', 'EDGE').upper().strip()
 if SITE_ROLE not in ('EDGE', 'MASTER', 'CLOUD'):
     raise ImproperlyConfigured(f"Invalid SITE_ROLE: {SITE_ROLE}")
 
+# Separate session cookies for each role to prevent browser conflicts
+SESSION_COOKIE_NAME = f'sessionid_{SITE_ROLE.lower()}'
+
 
 
 # ── Security ─────────────────────────────────────────────────────────────────
@@ -46,6 +49,16 @@ DEBUG = os.getenv('DEBUG', 'False').lower() in ('true', '1', 'yes')
 # Comma-separated list of allowed hosts, e.g. "localhost,192.168.1.10"
 _allowed_hosts_env = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com')
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+
+# Allow POST requests (like login) from network IP
+CSRF_TRUSTED_ORIGINS = [
+    'http://192.169.0.109:8000',
+    'http://192.169.0.109:8001',
+    'http://10.187.246.77:8000',
+    'http://10.187.246.77:8001',
+    'http://10.205.102.77:8000',
+    'http://10.205.102.77:8001',
+]
 
 
 # Application definition

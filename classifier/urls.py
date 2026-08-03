@@ -78,6 +78,7 @@ urlpatterns = [
     path("api/local/sync/push/", local_sync.api_local_trigger_push, name="local_sync_push"),
     path("api/local/sync/pull/", local_sync.api_local_trigger_pull, name="local_sync_pull"),
     path("api/local/sync/push-model/<str:version_tag>/", local_sync.api_local_push_model, name="local_sync_push_model"),
+    path("api/local/sync/push-model/", local_sync.api_local_push_model, name="local_sync_push_active_model"),
     path("api/local/sync/fetch-model/", local_sync.api_local_fetch_model, name="local_sync_fetch_model"),
     path("api/local/sync/activate-model/<str:version_tag>/", local_sync.api_local_activate_model, name="local_sync_activate_model"),
     path("api/local/models/", local_sync.api_local_list_models, name="local_list_models"),

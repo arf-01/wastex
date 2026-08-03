@@ -195,13 +195,31 @@ def api_training_promote(request):
     run.is_active_model = True
     run.save(update_fields=["is_active_model"])
 
-    # Reload the model into memory
+    # Reload the model into memory and deploy classes.txt
     try:
+        from pathlib import Path
+        import shutil
+        from django.conf import settings
         from classifier.model_loader import load_model
+        
+        # 1. Reload model
         load_model(run.model_path)
         logger.info("Promoted and loaded model from run '%s'", run_name)
+        
+        # 2. Deploy classes.txt
+        run_classes = Path(run.model_path).parent / "classes.txt"
+        production_classes = Path(settings.BASE_DIR) / "models" / "classes.txt"
+        if run_classes.exists():
+            shutil.copy2(str(run_classes), str(production_classes))
+            # Reload the in-memory class list
+            from classifier.views.helpers import MODEL_CLASS_NAMES
+            new_names = [l.strip() for l in open(production_classes) if l.strip()]
+            MODEL_CLASS_NAMES.clear()
+            MODEL_CLASS_NAMES.extend(new_names)
+            logger.info("Classes list successfully reloaded: %s", MODEL_CLASS_NAMES)
+            
     except Exception:
-        logger.exception("Model promoted in DB but hot-reload failed")
+        logger.exception("Model promoted in DB but hot-reload/classes update failed")
 
     return JsonResponse({
         "status": "promoted",

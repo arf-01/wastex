@@ -28,14 +28,19 @@ def _page_context(active_page: str) -> dict:
 
 @login_required
 def root_redirect(request):
-    """Redirect users to the appropriate landing page based on SITE_ROLE."""
-    if settings.SITE_ROLE == 'MASTER':
-        return redirect('master_dataset')
-    elif settings.SITE_ROLE == 'EDGE':
+    """Redirect users to the appropriate landing page based on group membership or SITE_ROLE."""
+    if request.user.is_superuser:
+        if settings.SITE_ROLE == 'MASTER':
+            return redirect('master_dataset')
         return redirect('edge_dashboard')
-    
-    # Fallback to group-based if role logic isn't enough
+        
     if request.user.groups.filter(name='MasterUsers').exists():
+        return redirect('master_dataset')
+    elif request.user.groups.filter(name='EdgeUsers').exists():
+        return redirect('edge_dashboard')
+        
+    # Fallback to site role
+    if settings.SITE_ROLE == 'MASTER':
         return redirect('master_dataset')
     return redirect('edge_dashboard')
 

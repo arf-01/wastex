@@ -4,7 +4,6 @@
 {% block topbar_title %}Dashboard{% endblock %}
 {% block topbar_subtitle %}<span class="topbar-subtitle" id="lastUpdated"></span>{% endblock %}
 {% block topbar_right %}
-    <a href="{% url 'edge_upload' %}" class="btn btn-ghost btn-sm" style="opacity: 0.6; font-size: 12px;" title="Manual Upload (Testing Only)">🧪 Test Upload</a>
 {% endblock %}
 
 {% block extra_css %}
@@ -216,7 +215,7 @@
         <div class="panel">
             <div class="panel-header" style="justify-content: space-between; display: flex; align-items: center;">
                 <h2>AI Models (Local Repository)</h2>
-                <button class="btn btn-sm btn-primary" onclick="fetchNewModel()">📥 Fetch New Model from Cloud</button>
+                <button class="btn btn-sm btn-primary" id="fetchModelBtn" onclick="fetchLatestModel()">Fetch Latest from Cloud</button>
             </div>
             <div>
                 <table class="count-table">
@@ -383,31 +382,34 @@
             .catch(function(e) { console.error('loadLocalModels error:', e); });
     }
 
-    function fetchNewModel() {
-        if (!confirm('Fetch latest model from the cloud? This may take a few minutes.')) return;
-        var tbody = document.getElementById('modelsTableBody');
-        tbody.innerHTML = '<tr><td colspan="4"><div class="empty-state" style="padding:24px;"><div class="spinner"></div><br>Downloading model... Please wait.</div></td></tr>';
-        
-        fetch('/api/local/sync/fetch-model/', { method: 'POST' })
-            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-            .then(function(res) {
-                if (!res.ok) { alert(res.data.error || 'Fetch failed'); loadLocalModels(); return; }
-                alert(res.data.message || 'Model downloaded successfully!');
-                loadLocalModels();
-            })
-            .catch(function(e) { alert('Network error: ' + e.message); loadLocalModels(); });
-    }
-
     function activateModel(tag) {
-        if (!confirm('Activate model ' + tag + '? It will be used after the next app restart.')) return;
+        if (!confirm('Activate model ' + tag + '? This will immediately hot-reload the running Edge server to use it.')) return;
         fetch('/api/local/sync/activate-model/' + encodeURIComponent(tag) + '/', { method: 'POST' })
             .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
             .then(function(res) {
                 if (!res.ok) { alert(res.data.error || 'Activation failed'); return; }
-                alert(res.data.message || 'Model activated successfully!');
+                alert(res.data.message || 'Model activated and hot-reloaded successfully!');
                 loadLocalModels();
             })
             .catch(function(e) { alert('Network error: ' + e.message); });
+    }
+
+    function fetchLatestModel() {
+        var btn = document.getElementById('fetchModelBtn');
+        var originalText = btn.textContent;
+        btn.textContent = 'Syncing...';
+        btn.disabled = true;
+        fetch('/api/local/sync/fetch-model/', { method: 'POST' })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.error) { alert('Fetch failed: ' + data.error); }
+                else { alert(data.message || 'Fetch completed successfully.'); loadLocalModels(); }
+            })
+            .catch(function(e) { alert('Network error: ' + e.message); })
+            .finally(function() {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            });
     }
 
     function init() {

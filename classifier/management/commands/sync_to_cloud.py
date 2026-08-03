@@ -27,15 +27,11 @@ class Command(BaseCommand):
         self.stdout.write(f"Syncing as {role}...")
 
         if role == 'EDGE':
-            if options.get('fetch_model'):
-                self.fetch_model_from_cloud()
-            else:
-                self.sync_edge_to_cloud()
+            self.sync_edge_to_cloud()
+            self.fetch_model_from_cloud()
         elif role == 'MASTER':
             self.sync_master_to_cloud()
-            # Also check for latest model releases to push
-            if options.get('release'):
-                self.push_model_to_cloud(options['release'])
+            self.auto_push_latest_model()
         elif role == 'CLOUD':
             self.stdout.write(self.style.WARNING("Cloud nodes do not initiate sync. They wait for Edge/Master."))
         
@@ -294,14 +290,35 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"  [!] Connection error: {str(e)}"))
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--release",
-            type=str,
-            help="Specify a model version tag to release to the cloud (Master role only).",
-        )
-        parser.add_argument(
-            "--fetch-model",
-            action="store_true",
-            help="Fetch the latest model from the cloud (Edge role only).",
-        )
+    def auto_push_latest_model(self):
+        """[MASTER ROLE] Automatically find and push the active model if it isn't the latest on cloud."""
+        from classifier.models import TrainingRun
+        active_run = TrainingRun.objects.filter(is_active_model=True, status='completed').first()
+        if not active_run:
+            self.stdout.write("No completed active model found to push.")
+            return
+
+        version_tag = active_run.run_name
+        
+        # Check if it's already the latest on cloud
+        broker_url = os.getenv('CLOUD_BROKER_URL')
+        token = os.getenv('CLOUD_BROKER_TOKEN')
+        if not broker_url or not token:
+            return
+
+        headers = {'Authorization': f'Token {token}'}
+        try:
+            resp = requests.get(
+                f"{broker_url.rstrip('/')}/api/sync/model/latest/",
+                headers=headers,
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get('version_tag') == version_tag:
+                    self.stdout.write(self.style.SUCCESS(f"Active model {version_tag} is already the latest on Cloud."))
+                    return
+        except Exception:
+            pass # Continue to push if we can't verify
+
+        self.push_model_to_cloud(version_tag)

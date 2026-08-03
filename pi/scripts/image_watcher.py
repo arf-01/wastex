@@ -57,18 +57,15 @@ def load_config():
 
     cfg.read(CONFIG_FILE)
 
-    # Required values
-    try:
-        backend_url = cfg["server"]["BACKEND_URL"].rstrip("/")
-        bin_id      = cfg["identity"]["BIN_ID"]
-        user_token  = cfg["identity"]["USER_TOKEN"]
-    except KeyError as e:
-        print(f"❌ Missing config key: {e}")
-        print(f"   Check {CONFIG_FILE} and ensure all keys are present.")
-        sys.exit(1)
+    # Hardcoded values to bypass any config file errors!
+    backend_url = "http://10.62.91.77:8000"
+    
+    bin_id     = "lalon220"
+    user_token = "d68c042622716e8f0536bb22a1eb668923024fe3"
+
 
     # Optional values with defaults
-    watch_folder   = cfg.get("watcher", "WATCH_FOLDER",  fallback="/home/pi/webcam_captures")
+    watch_folder   = cfg.get("watcher", "WATCH_FOLDER",  fallback="/home/dhruba001/webcam_captures")
     max_retries    = int(cfg.get("watcher", "MAX_RETRIES",   fallback="3"))
     retry_delay    = float(cfg.get("watcher", "RETRY_DELAY",  fallback="2.0"))
     valid_exts     = {e.strip().lower() for e in
@@ -147,7 +144,7 @@ class ImageUploadHandler(FileSystemEventHandler):
             try:
                 with open(file_path, "rb") as f:
                     response = requests.post(
-                        f"{CONFIG['backend_url']}/classifier/api/pi/inference/",
+                        f"{CONFIG['backend_url']}/api/pi/inference/",
                         headers=auth_headers(),
                         files={"image": f},
                         data={"source": CONFIG["bin_id"]},
@@ -156,10 +153,21 @@ class ImageUploadHandler(FileSystemEventHandler):
 
                 if response.status_code == 200:
                     result = response.json()
+                    pred_class = result.get('predicted_class')
+                    if not pred_class:
+                        pred_class = "OOD"
+                        
                     logger.info("✅ Upload successful!")
                     logger.info(f"   Bin:             {CONFIG['bin_id']}")
-                    logger.info(f"   Predicted class: {result.get('predicted_class')}")
+                    logger.info(f"   Predicted class: {pred_class}")
                     logger.info(f"   Saved to DB:     {result.get('saved_to_db')}")
+                    
+                    try:
+                        with open("/tmp/wastex_result.txt", "w") as f:
+                            f.write(str(pred_class))
+                    except Exception:
+                        pass
+                    
                     return
 
                 elif response.status_code == 401:
@@ -196,7 +204,7 @@ def check_backend_health() -> bool:
     """Verify the backend is online and register bin status."""
     try:
         r = requests.get(
-            f"{CONFIG['backend_url']}/classifier/api/pi/health/?source={CONFIG['bin_id']}",
+            f"{CONFIG['backend_url']}/api/pi/health/?source={CONFIG['bin_id']}",
             headers=auth_headers(),
             timeout=5,
         )

@@ -43,6 +43,14 @@ if getattr(settings, 'SITE_ROLE', 'EDGE') != 'CLOUD':
         logger.exception("Failed to load classification model from %s", MODEL_PATH)
 
 
+def load_model(model_path: str):
+    """Dynamically load/reload a Keras model into the global model variable."""
+    global model
+    import tensorflow as tf
+    logger.info("Hot-reloading model from %s", model_path)
+    model = tf.keras.models.load_model(str(model_path), compile=False)
+
+
 # ── Preprocessing ───────────────────────────────────────────────────────────
 
 def preprocess_image(image_path: str) -> np.ndarray:

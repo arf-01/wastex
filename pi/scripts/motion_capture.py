@@ -18,14 +18,14 @@ ROI_X = (40, 280)  # Cut off 40 pixels from left and right edges
 
 # 2 & 4. Dual Thresholds (Hysteresis)
 DIFF_THRESHOLD = 25              
-DETECT_HIGH_AREA = 800          # High threshold: Triggers an object placement
-EMPTY_LOW_AREA = 300             # Low threshold: Confirms pan is empty
+DETECT_HIGH_AREA = 2500         # High threshold: Triggers an object placement (raised to reduce false positives)
+EMPTY_LOW_AREA = 800             # Low threshold: Confirms pan is empty
 
 # 3. Temporal Consistency
 FRAMES_TO_DETECT = 5             # Must see object for 5 frames straight
-FRAMES_TO_EMPTY = 10             # Must be empty for 10 frames straight
-STABLE_AREA_DIFF = 1000          # Wait for it to stop wobbling (area difference)
-STABLE_FRAMES_REQUIRED = 15      # Frames required before triggering the capture
+FRAMES_TO_EMPTY = 20             # Must be empty for 20 frames straight before baseline updates
+#STABLE_AREA_DIFF = 1000          # Wait for it to stop wobbling (area difference)
+#STABLE_FRAMES_REQUIRED = 15      # Frames required before triggering the capture
 
 # 5. Adaptive Baseline (Running Average)
 ALPHA = 0.05                     # Speed of baseline update. 0.05 is a slow, steady fade.
@@ -39,10 +39,9 @@ def process_frame(frame):
     resized = cv2.resize(frame, PROCESS_RESOLUTION)
     roi = resized[ROI_Y[0]:ROI_Y[1], ROI_X[0]:ROI_X[1]]
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    # Canny Edge Detection natively ignores sweeping exposure/lighting changes
-    edges = cv2.Canny(blurred, 30, 130)
-    return edges
+    # Heavy blur to smooth out camera noise and micro-vibrations
+    blurred = cv2.GaussianBlur(gray, (21, 21), 0)
+    return blurred
 
 def get_max_contour_area(contours):
     if not contours:
@@ -55,9 +54,9 @@ def main():
         logger.error(f"Failed to open camera on index {CAMERA_INDEX}.")
         return
 
-    logger.info("Starting camera warmup...")
-    time.sleep(2.0)
-    for _ in range(5): cap.grab()
+    logger.info("Starting camera warmup (5s for auto-exposure to settle)...")
+    time.sleep(5.0)
+    for _ in range(30): cap.grab()  # flush stale/exposure-adjusting frames
     ret, frame = cap.read()
     if not ret:
         logger.error("Failed to read from camera. Exiting...")
@@ -80,6 +79,7 @@ def main():
     empty_count = 0
     stable_count = 0
     previous_area = 0
+    startup_frames = 0
 
     try:
         while True:
@@ -91,12 +91,23 @@ def main():
 
             processed_frame = process_frame(frame)
             
+            # --- STARTUP GRACE PERIOD ---
+            if startup_frames < 30:
+                # Keep accumulating to warm up the math
+                cv2.accumulateWeighted(processed_frame, baseline, ALPHA)
+                startup_frames += 1
+                if startup_frames == 30:
+                    # Hard-snap the baseline to the exact current frame to guarantee 100% sync
+                    baseline = processed_frame.astype("float")
+                    logger.info("Startup grace period complete. Baseline is fully settled and ready to detect.")
+                continue
+            
             # Simple absdiff using the dynamically running average baseline
             frame_delta = cv2.absdiff(cv2.convertScaleAbs(baseline), processed_frame)
             _, thresh = cv2.threshold(frame_delta, DIFF_THRESHOLD, 255, cv2.THRESH_BINARY)
             
-            # Dilate aggressively (6 iterations) so Canny edge outlines bleed into a solid filled blob
-            thresh = cv2.dilate(thresh, None, iterations=6)
+            # Dilate lightly to close gaps
+            thresh = cv2.dilate(thresh, None, iterations=2)
             
             contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             current_max_area = get_max_contour_area(contours)
@@ -110,6 +121,11 @@ def main():
                     if object_already_captured:
                         logger.info("Pan is clear! Resetting flag to 0.")
                         object_already_captured = False
+                        if os.path.exists("/tmp/wastex_result.txt"):
+                            try:
+                                os.remove("/tmp/wastex_result.txt")
+                            except Exception:
+                                pass
                     
                     # 5. Adaptive background magic (only runs when empty!)
                     cv2.accumulateWeighted(processed_frame, baseline, ALPHA)
@@ -179,7 +195,18 @@ def main():
                 
             cv2.putText(frame, f"STATUS: {hud_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
             cv2.putText(frame, f"AREA: {current_max_area}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            cv2.putText(frame, f"Canny Engine", (w - pip_w, pip_h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            
+            # Read Classification Result if available
+            if os.path.exists("/tmp/wastex_result.txt"):
+                try:
+                    with open("/tmp/wastex_result.txt", "r") as f:
+                        api_result = f.read().strip()
+                    if api_result:
+                        cv2.putText(frame, f"AI: {api_result.upper()}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 100, 255), 2)
+                except Exception:
+                    pass
+                    
+            cv2.putText(frame, f"Blur Engine", (w - pip_w, pip_h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
             # Save frame to the running .avi video
             if out is not None:

@@ -309,9 +309,8 @@
                 var f1 = run.test_f1 ? (run.test_f1 * 100).toFixed(2) + '%' : '—';
                 var dur = run.duration || '—', activeLabel = run.is_active_model ? ' <span class="tag tag-active">★</span>' : '';
                 var actions = '<button class="btn btn-sm" onclick="showRunDetail(' + i + ')">View</button>';
-                if (run.status === 'completed') {
-                    if (!run.is_active_model) actions += ' <button class="btn btn-sm btn-success" onclick="promoteRun(\'' + run.run_name.replace(/'/g, "\\'") + '\')">Promote</button>';
-                    actions += ' <button class="btn btn-sm btn-primary" onclick="pushToCloud(\'' + run.run_name.replace(/'/g, "\\'") + '\')">Push to Cloud</button>';
+                if (run.status === 'completed' && !run.is_active_model) {
+                    actions += ' <button class="btn btn-sm btn-success" onclick="promoteRun(\'' + run.run_name.replace(/'/g, "\\'") + '\')">Promote</button>';
                 }
                 html += '<tr><td><span class="run-name">' + run.run_name + '</span>' + activeLabel + '</td><td><span class="tag ' + statusClass + '">' + run.status.toUpperCase() + '</span></td><td class="metric">' + acc + '</td><td class="metric">' + f1 + '</td><td>' + dur + '</td><td class="actions">' + actions + '</td></tr>';
             }
@@ -332,7 +331,10 @@
             '<div class="detail-row"><span class="detail-label">F1 Score</span><span class="detail-value">' + f1 + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Epochs</span><span class="detail-value">' + (active.epochs_completed || '—') + '</span></div>' +
             '<div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">' + (active.duration || '—') + '</span></div>' +
-            '<div class="detail-row"><span class="detail-label">Trained</span><span class="detail-value">' + new Date(active.created_at).toLocaleDateString() + '</span></div>';
+            '<div class="detail-row"><span class="detail-label">Trained</span><span class="detail-value">' + new Date(active.created_at).toLocaleDateString() + '</span></div>' +
+            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">' +
+            '<button class="btn btn-primary" id="pushToCloudBtn" onclick="pushActiveModelToCloud()" style="width:100%;">☁️ Push Active Model to Cloud</button>' +
+            '</div>';
     }
 
     function promoteRun(runName) {
@@ -340,18 +342,6 @@
         fetch('/api/training/promote/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run_name: runName }) })
         .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
         .then(function(res) { if (!res.ok) { showToast(res.data.error || 'Promote failed', 'error'); return; } showToast('Model promoted: ' + runName, 'success'); loadHistory(); })
-        .catch(function(e) { showToast('Network error: ' + e.message, 'error'); });
-    }
-
-    function pushToCloud(runName) {
-        if (!confirm('Push "' + runName + '" to the Cloud Broker?\n\nThis will make it available for Edge devices to download.')) return;
-        showToast('Uploading model to Cloud (this may take a few minutes)...', 'info');
-        fetch('/api/local/sync/push-model/' + encodeURIComponent(runName) + '/', { method: 'POST' })
-        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-        .then(function(res) {
-            if (!res.ok) { showToast(res.data.error || 'Push failed', 'error'); return; }
-            showToast('Model pushed successfully: ' + runName, 'success');
-        })
         .catch(function(e) { showToast('Network error: ' + e.message, 'error'); });
     }
 
@@ -407,6 +397,22 @@
     }
 
     function closeModal(e) { if (!e || e.target === document.getElementById('modalOverlay')) document.getElementById('modalOverlay').classList.remove('active'); }
+
+    function pushActiveModelToCloud() {
+        var btn = document.getElementById('pushToCloudBtn');
+        if (!btn || btn.disabled) return;
+        if (!confirm('Push the active model to the Cloud Broker?\n\nEdge devices will be able to fetch this model.')) return;
+        btn.disabled = true;
+        var origText = btn.textContent;
+        btn.textContent = '⏳ Pushing…';
+        fetch('/api/local/sync/push-model/', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(res) {
+            btn.disabled = false; btn.textContent = origText;
+            if (!res.ok) { showToast(res.data.error || 'Push failed', 'error'); return; }
+            showToast(res.data.message || 'Model pushed to cloud!', 'success');
+        }).catch(function(e) { btn.disabled = false; btn.textContent = origText; showToast('Network error: ' + e.message, 'error'); });
+    }
 
     function init() { loadVersions(); loadHistory(); startPolling(); }
     init();

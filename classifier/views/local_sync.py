@@ -43,13 +43,33 @@ def api_local_trigger_pull(request):
 
 @csrf_exempt
 @require_POST
-def api_local_push_model(request, version_tag):
-    """[MASTER ROLE] Trigger the sync_to_cloud command to push a specific model release."""
+def api_local_push_model(request, version_tag=None):
+    """[MASTER ROLE] Push a specific model (or the active model) to the Cloud Broker."""
     if settings.SITE_ROLE != 'MASTER':
         return JsonResponse({"error": "This action is only available on MASTER nodes."}, status=403)
     
     try:
-        call_command('sync_to_cloud', release=version_tag)
+        # If no version_tag provided, find the active model
+        if not version_tag:
+            from classifier.models import TrainingRun
+            active_run = TrainingRun.objects.filter(is_active_model=True, status='completed').first()
+            if not active_run:
+                return JsonResponse({"error": "No active trained model to push."}, status=404)
+            version_tag = active_run.run_name
+
+        # Instantiate the sync command and call its push_model_to_cloud directly
+        from classifier.management.commands.sync_to_cloud import Command as SyncCommand
+        from django.core.management.color import no_style
+        
+        cmd = SyncCommand()
+        cmd.stdout = __import__('io').StringIO()  # Capture output
+        cmd.style = no_style()                    # Avoid ANSI in captured output
+        cmd.push_model_to_cloud(version_tag)
+        
+        output = cmd.stdout.getvalue()
+        if 'Error' in output or 'failed' in output.lower():
+            return JsonResponse({"status": "error", "message": output.strip()}, status=500)
+        
         return JsonResponse({"status": "success", "message": f"Model {version_tag} pushed to cloud successfully."})
     except Exception as e:
         logger.exception(f"Failed to push model {version_tag}")
@@ -68,7 +88,7 @@ def api_local_fetch_model(request):
         return JsonResponse({"error": "This action is only available on EDGE nodes."}, status=403)
     
     try:
-        call_command('sync_to_cloud', fetch_model=True)
+        call_command('sync_to_cloud')
         return JsonResponse({"status": "success", "message": "Model fetch completed."})
     except Exception as e:
         logger.exception("Local fetch model failed")
@@ -96,9 +116,25 @@ def api_local_activate_model(request, version_tag):
         # Update AppSettings
         AppSettings.set('active_model_version', version_tag, 'The currently active model version.')
         
+        # Dynamic hot-reload model in memory
+        from classifier.model_loader import load_model
+        load_model(str(target_model))
+        logger.info("Edge hot-reload successful for model '%s'", version_tag)
+        
+        # Also deploy classes.txt if present
+        source_classes = versions_dir / "classes.txt"
+        target_classes = Path(settings.BASE_DIR) / "models" / "classes.txt"
+        if source_classes.exists():
+            shutil.copy2(str(source_classes), str(target_classes))
+            from classifier.views.helpers import MODEL_CLASS_NAMES
+            new_names = [l.strip() for l in open(target_classes) if l.strip()]
+            MODEL_CLASS_NAMES.clear()
+            MODEL_CLASS_NAMES.extend(new_names)
+            logger.info("Edge classes list successfully reloaded: %s", MODEL_CLASS_NAMES)
+
         return JsonResponse({
             "status": "success", 
-            "message": f"Model {version_tag} activated. It will be used on the next app restart."
+            "message": f"Model {version_tag} activated and hot-reloaded successfully!"
         })
     except Exception as e:
         logger.exception("Model activation failed")
