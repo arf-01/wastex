@@ -31,7 +31,6 @@ class Command(BaseCommand):
             self.fetch_model_from_cloud()
         elif role == 'MASTER':
             self.sync_master_to_cloud()
-            self.auto_push_latest_model()
         elif role == 'CLOUD':
             self.stdout.write(self.style.WARNING("Cloud nodes do not initiate sync. They wait for Edge/Master."))
         
@@ -186,45 +185,6 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"  [!] Connection error: {str(e)}"))
 
-    def push_model_to_cloud(self, version_tag):
-        """Push a local .keras model to the cloud broker."""
-        broker_url = os.getenv('CLOUD_BROKER_URL')
-        token = os.getenv('CLOUD_BROKER_TOKEN')
-
-        model_path = Path(settings.MODELS_ROOT) / 'versions' / version_tag / f"{version_tag}.keras"
-        if not model_path.exists():
-            self.stdout.write(self.style.ERROR(f"Model file not found: {model_path}"))
-            return
-
-        import hashlib
-        sha256 = hashlib.sha256()
-        with open(model_path, "rb") as f:
-            sha256.update(f.read())
-        checksum = sha256.hexdigest()
-
-        self.stdout.write(f"Pushing model {version_tag} to cloud...")
-        
-        headers = {'Authorization': f'Token {token}'}
-        with open(model_path, 'rb') as f:
-            files = {'model': f}
-            data = {
-                'version_tag': version_tag,
-                'checksum': checksum,
-                'notes': f"Auto-released from Master machine"
-            }
-            resp = requests.post(
-                f"{broker_url.rstrip('/')}/api/sync/model/release/",
-                headers=headers,
-                files=files,
-                data=data,
-                timeout=300 # Models are large
-            )
-            
-            if resp.status_code == 200:
-                self.stdout.write(self.style.SUCCESS(f"  [+] Model {version_tag} released successfully."))
-            else:
-                self.stdout.write(self.style.ERROR(f"  [!] Release failed: {resp.text}"))
-
     def fetch_model_from_cloud(self):
         """[EDGE ROLE] Fetch the latest active model from the cloud."""
         broker_url = os.getenv('CLOUD_BROKER_URL')
@@ -290,35 +250,4 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"  [!] Connection error: {str(e)}"))
 
-    def auto_push_latest_model(self):
-        """[MASTER ROLE] Automatically find and push the active model if it isn't the latest on cloud."""
-        from classifier.models import TrainingRun
-        active_run = TrainingRun.objects.filter(is_active_model=True, status='completed').first()
-        if not active_run:
-            self.stdout.write("No completed active model found to push.")
-            return
 
-        version_tag = active_run.run_name
-        
-        # Check if it's already the latest on cloud
-        broker_url = os.getenv('CLOUD_BROKER_URL')
-        token = os.getenv('CLOUD_BROKER_TOKEN')
-        if not broker_url or not token:
-            return
-
-        headers = {'Authorization': f'Token {token}'}
-        try:
-            resp = requests.get(
-                f"{broker_url.rstrip('/')}/api/sync/model/latest/",
-                headers=headers,
-                timeout=10
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get('version_tag') == version_tag:
-                    self.stdout.write(self.style.SUCCESS(f"Active model {version_tag} is already the latest on Cloud."))
-                    return
-        except Exception:
-            pass # Continue to push if we can't verify
-
-        self.push_model_to_cloud(version_tag)

@@ -1,150 +1,98 @@
 # WasteX Engineering Practice & Learning Roadmap
 
-This document outlines a structured, 1-month learning and implementation roadmap for your work on [WasteX](file:///c:/WASTE/wastex). It is specifically designed to help you build **engineering significance** in **Backend Engineering** and **Machine Learning Systems (MLOps)**.
+This document outlines a structured learning and implementation roadmap for your work on [WasteX](file:///c:/WASTE/wastex). Because you have moved to **Version 2** (where the central node is purely a data collector and the complex training logic is decoupled), you have a massive opportunity to make this a **standout portfolio project**.
+
+To impress engineering teams, a portfolio project needs to show that you care about **constraints (memory/CPU)**, **reliability (networking drops)**, and **real-world edge conditions**.
 
 ---
 
-## 🗺️ Architectural Context of WasteX
+## 🌟 How to Make This "Portfolio-Worthy"
 
-WasteX uses a split-site architecture where Edge nodes run real-time inference, and a central Cloud Broker aggregates data. To turn this from a prototype into a production-grade ML system, we will focus on **scalability**, **resiliency**, **observability**, and **model efficiency**.
+Most beginners just train a standard heavy model, wrap it in Flask, and call it a day. To show true **Software Engineering** and **MLOps** capabilities, you should focus on the following pillars:
 
-```mermaid
-graph TD
-    subgraph edge ["Edge Bin (Raspberry Pi)"]
-        A["Webcam / Camera"] -->|Motion Trigger| B["Local Inference Client"]
-        B -->|OOD Detection| C["Local Queue / Cache"]
-        C -->|Resilient Sync| D["Cloud Gateway"]
-    end
-
-    subgraph cloud ["Cloud Broker (Django App)"]
-        D --> E["REST / gRPC Endpoints"]
-        E --> F[("PostgreSQL / Redis")]
-        F --> G["Distributed Task Queue"]
-        G -->|Celery Workers| H["Background Data Processing"]
-    end
-
-    subgraph obs ["Observability"]
-        E --> J["Prometheus Metrics"]
-        J --> K["Grafana Dashboard"]
-    end
-```
+1. **Edge ML Optimization (TinyML)**: Prove you can deploy ML on constrained hardware (Raspberry Pi) without melting the CPU.
+2. **Network Resilience**: Prove your system doesn't crash or lose data when the Wi-Fi drops.
+3. **Observability**: Prove you can measure your system's performance in production.
 
 ---
 
-## 🚀 Module 1: Production-Grade Backend Architectures
+## 🚀 Module 1: Edge ML & Model Optimization
 
-### 1. Swapping Threading for a Distributed Task Queue (Celery + Redis)
-- **Why it has Engineering Significance**: 
-  In Python backend systems, running long-running operations inside web request-response threads causes worker timeouts, blocks incoming traffic, and leaks memory. Production systems use task queues.
-- **Your Task**:
-  - Replace the current threading logic with **Celery**.
-  - Configure **Redis** or **RabbitMQ** as the message broker.
-  - Implement task status persistence, worker pool concurrency limits, and failure callbacks.
-  - Write unit tests for asynchronous task states.
+Running standard machine learning models in raw TensorFlow on a Raspberry Pi is slow and consumes too much RAM.
 
-### 2. Real-time Progress Tracking (WebSockets vs. Long-polling)
-- **Why it has Engineering Significance**:
-  Constantly polling creates unnecessary database reads and network overhead. Event-driven push is the standard for modern dashboards.
+### 1. Quantization & TFLite / ONNX Export
+- **Why it matters**: ML Engineers rarely deploy raw `.keras` or `.h5` files to production. They optimize them.
 - **Your Task**:
-  - Integrate **Django Channels** (WebSockets) or Server-Sent Events (SSE).
-  - Stream background task metrics and status updates directly from the Celery worker to the client UI.
-  - Handle client connection state changes and channel groups.
+  - Write a script to convert your lightweight model to **TensorFlow Lite (.tflite)**.
+  - Apply **INT8 Quantization** (Post-training quantization) to reduce the model size by 4x.
+  - Modify `pi/scripts/image_watcher.py` to use `tflite_runtime` instead of standard `tensorflow`. This avoids installing the massive 500MB TensorFlow package on the Pi.
+
+### 2. Hardware Profiling (The "Wow" Factor for Resumes)
+- **Why it matters**: Metrics prove engineering capability.
+- **Your Task**:
+  - Create a benchmark script on the Pi.
+  - Measure **Inference Latency (ms)**, **Memory Usage (MB)**, and **CPU Temperature (°C)** before and after your optimizations. 
+  - *Resume Bullet Point: "Reduced edge inference latency by X% and memory footprint by Y% by optimizing a MobileNetV3 model with INT8 quantization and TFLite conversion."*
 
 ---
 
-## 🧠 Module 2: Edge Inference & Model Optimization
+## 🔄 Module 2: Distributed Systems & Network Resilience
 
-### 1. TensorFlow Lite (TFLite) or ONNX Runtime Inference
-- **Why it has Engineering Significance**:
-  A full TensorFlow/Keras installation consumes over **500MB of RAM** and is extremely slow on CPUs or resource-constrained edge devices (like Raspberry Pis). ML Systems engineers must optimize models for target hardware.
-- **Your Task**:
-  - Write a model conversion script to export the trained `.keras` models to **TFLite** (quantized to float16 or int8) and **ONNX** formats.
-  - Rewrite [model_loader.py](file:///c:/WASTE/wastex/classifier/model_loader.py) to load `tflite_runtime` or `onnxruntime` instead of standard `tensorflow`.
-  - Profile the inference loop: Measure and compare **RAM footprint**, **CPU utilization**, and **Inference Latency** (ms) between raw Keras, ONNX, and Quantized TFLite.
+Your Master node is now an OOD (Out of Distribution) collector. But what happens if the Raspberry Pi loses internet connection for 3 hours?
 
-### 2. Edge-Side Image Batching
-- **Why it has Engineering Significance**:
-  If a bin detects multiple pieces of waste in rapid succession, running inference synchronously on single images can bottleneck the queue.
+### 1. Local Write-Ahead Log (WAL) / Queue on Edge
+- **Why it matters**: "It works on my local Wi-Fi" is not a production guarantee. Edge networks are notoriously flaky.
 - **Your Task**:
-  - Implement a batching queue in [image_watcher.py](file:///c:/WASTE/wastex/pi/scripts/image_watcher.py) that batches incoming frames and runs batch inference (e.g., batch size 4 or 8) to leverage SIMD vectorization.
+  - Update the Pi sync script so that when it detects an OOD image, it saves the image to a local directory and writes a record to a local **SQLite database** first.
+  - A separate background thread should continuously read from this local SQLite DB and attempt to push to the Master node. 
+  - If the push succeeds, delete the local record and image. If it fails, keep it.
+
+### 2. Exponential Backoff & Jitter
+- **Why it matters**: If 50 smart bins go offline and suddenly reconnect, they shouldn't all hammer the server at the exact same millisecond (Thundering Herd problem).
+- **Your Task**:
+  - Implement retry logic in your sync script. If the Master is down, wait 2 seconds, then 4 seconds, then 8 seconds, etc. (Exponential Backoff), adding a tiny random delay (Jitter) so multiple bins don't sync simultaneously.
 
 ---
 
-## 🔄 Module 3: MLOps and Data Lifecycle Management
+## 🌐 Module 3: Backend Engineering (The Master Collector)
 
-### 1. Robust Metadata Logging and Experiment Registry
-- **Why it has Engineering Significance**:
-  In ML systems, reproducibility is everything. You must track exactly which dataset version, hyperparameters, and code commit produced a specific model binary.
-- **Your Task**:
-  - Expand the [TrainingRun](file:///c:/WASTE/wastex/classifier/models.py#L449) model or integrate **MLflow** to log all experiment details.
-  - Save confusion matrices, precision-recall curves, and ROC curve plots as static assets tied to the run record.
-  - Implement a basic "Model Registry" state machine: `Candidate` -> `Staging` -> `Production` -> `Archived`.
+The Master node is responsible for receiving images and displaying them to admins. 
 
-### 2. Fine-grained Evaluation and Slice Analysis
-- **Why it has Engineering Significance**:
-  Overall metrics (e.g., 90% accuracy) often mask critical failures in subset populations. For instance, a model might perform perfectly on Plastic but fail catastrophically on Glass under low-light conditions.
+### 1. Asynchronous Webhooks & High-Performance Endpoints
+- **Why it matters**: If a Pi uploads an image, the Django view shouldn't block while processing or verifying the image.
 - **Your Task**:
-  - Modify [evaluate.py](file:///c:/WASTE/wastex/training/evaluate.py) to perform "slice analysis."
-  - Compute performance metrics broken down by:
-    - **Edge Bin location / ID** (uncovering environment-specific bias).
-    - **Image characteristics** (e.g., resolution, brightness).
-  - Save these reports to help operators understand where the model is weak before promoting it.
+  - Use **Django Ninja** or **Django REST Framework** to build a clean, typed API endpoint for the Pi to push images to.
+  - Ensure the OOD Gallery implements pagination (so loading the page doesn't crash if there are 10,000 OOD images).
+
+### 2. Data Lifecycle Management
+- **Why it matters**: Storage isn't infinite.
+- **Your Task**:
+  - Write a Django Management command (`clean_stale_ood.py`) that deletes OOD images older than 30 days that an admin hasn't labeled.
+  - Hook this up to a simple cron job.
 
 ---
 
-## 🌐 Module 4: Distributed Systems & Network Resilience
+## 🔍 Module 4: Observability (Standing out as a Pro)
 
-### 1. Local Persistence Queue on Edge Nodes
-- **Why it has Engineering Significance**:
-  Edge devices operate on unreliable networks. If the Wi-Fi drops, the current [image_watcher.py](file:///c:/WASTE/wastex/pi/scripts/image_watcher.py) will fail uploads and potentially drop data.
+### 1. Edge Heartbeats & Logging
+- **Why it matters**: How do you know if a bin is online?
 - **Your Task**:
-  - Re-engineer the Pi upload client to use a local **SQLite-backed write-ahead queue** or a lightweight message broker (like **MQTT** via Mosquitto).
-  - When an image is captured, store it locally first.
-  - Implement an asynchronous background sync thread that reads from SQLite, attempts transmission, and deletes the record only upon receiving a `200 OK` from the broker.
-  - Implement **exponential backoff with jitter** to prevent thundering-herd problems when the network reconnects.
+  - Make the Pi send a lightweight "Heartbeat" ping to the Master node every 60 seconds (containing CPU temp and free disk space).
+  - Show a "Bin Status" dashboard on the Master node (Online/Offline, Last Seen, Storage Full Warning).
 
-### 2. High-Performance APIs (gRPC / Protocol Buffers)
-- **Why it has Engineering Significance**:
-  REST/JSON payloads are verbose and slow to serialize. For large scale video/image metadata sync, gRPC reduces CPU utilization and payload size.
+### 2. Proper Python Logging
+- **Why it matters**: `print()` is for scripts. `logging` is for software.
 - **Your Task**:
-  - Define a Protobuf schema for telemetry transfer (image metadata, class detections, health stats).
-  - Create a secondary gRPC endpoint on the Django/Python broker to ingest telemetry.
-  - Measure network bandwidth savings compared to standard REST/JSON endpoints.
+  - Implement Python's `logging` module across the Pi scripts and Django backend. 
+  - Log to rotating files so the Pi's SD card doesn't fill up with text logs over time.
 
 ---
 
-## 🔒 Module 5: Reliability, Security, & Observability
+## 📆 Recommended Execution Plan
 
-### 1. Prometheus Telemetry and Dashboard Observability
-- **Why it has Engineering Significance**:
-  You cannot manage what you cannot measure. Monitoring ML endpoints (inference throughput, error rates, model confidence scores, drift alerts) is crucial.
-- **Your Task**:
-  - Expose a Prometheus metrics endpoint (using `django-prometheus` or custom instrumentation).
-  - Track:
-    - `inference_latency_seconds_bucket` (distribution of inference times).
-    - `ood_detection_count_total` (frequency of anomalies).
-    - `active_edge_bins_count` (heartbeat monitoring).
-  - Write a `docker-compose` setup hosting Prometheus & Grafana, and design a custom dashboard.
-
-### 2. Scoped API Key Authentication and Rate Limiting
-- **Why it has Engineering Significance**:
-  Edge nodes are physically exposed. If an attacker gains physical access to a Pi, they can extract its API token.
-- **Your Task**:
-  - Move away from static Django user tokens to scoped, expirable API Keys (e.g., using `djangorestframework-api-key`).
-  - Restrict keys on a per-bin basis: a key for `bin_cafeteria` can *only* post telemetry to its own endpoint and cannot read dataset tables.
-  - Implement API rate limiting using **Redis** to prevent compromised edge devices from flooding the broker.
-
----
-
-## 📆 Recommended 4-Week Timeline
-
-| Week | Focus Area | Core Technologies | Target Outcome |
-| :--- | :--- | :--- | :--- |
-| **Week 1** | **Backend Pipeline & Task Queuing** | Django, Celery, Redis, WebSockets | Heavy background tasks run reliably with real-time UI logs. |
-| **Week 2** | **Edge Optimization & Inference** | ONNX Runtime, TFLite, Profiling | Inference runs 5x faster, consumes 10x less RAM, and is ready for Raspberry Pi CPUs. |
-| **Week 3** | **Edge Resilience & gRPC** | SQLite, MQTT, Protobuf, gRPC | Telemetry is queued locally when offline; sync is highly optimized for bandwidth. |
-| **Week 4** | **Observability & MLOps Polish** | Prometheus, Grafana, MLflow, API Scopes | Complete dashboards track model performance, logs, security scopes, and drift alerts. |
-
----
-> [!TIP]
-> **Suggested Start**: Pick **Week 1 (Celery + Redis task queue)** as your first project. It is the cornerstone of backend engineering and immediately solves a bottleneck in WasteX's dashboard.
+| Phase | Focus Area | Goal |
+| :--- | :--- | :--- |
+| **Phase 1** | **Edge Optimization** | Optimize your model using quantization and TFLite. Measure the performance gains. |
+| **Phase 2** | **Resiliency** | Build the local SQLite queue on the Pi for offline image caching and exponential backoff sync. |
+| **Phase 3** | **Observability** | Add heartbeats and robust rotating logs. Build the "Bin Status" view on the Master node. |
+| **Phase 4** | **Documentation** | Write a killer README. Add architecture diagrams. Document your performance benchmarks (Before vs After). |

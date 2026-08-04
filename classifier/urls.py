@@ -28,7 +28,6 @@ urlpatterns = [
 
     # ── Master Pages ────────────────────────────────────────────────────
     path("master/dataset/", views.dataset_view, name="master_dataset"),
-    path("master/training/", views.training_view, name="master_training"),
 
     # ── Classification ──────────────────────────────────────────────────
     path("classify/", views.classify, name="classify"),
@@ -43,21 +42,7 @@ urlpatterns = [
     path("api/ood/<int:image_id>/review/", views.api_review_image, name="api_review_image"),
     path("api/ood/<int:image_id>/label/", views.api_label_image, name="api_label_image"),
 
-    # ── Dataset versioning ──────────────────────────────────────────────
-    path("api/classes/", views.api_classes, name="api_classes"),
-    path("api/dataset/versions/", views.api_dataset_versions, name="api_dataset_versions"),
-    path("api/dataset/active/", views.api_active_version, name="api_active_version"),
-    path("api/dataset/set-active/", views.api_set_active_version, name="api_set_active_version"),
-    path("api/dataset/staged/", views.api_staged_images, name="api_staged_images"),
-    path("api/dataset/create-version/", views.api_create_version, name="api_create_version"),
-    path("api/dataset/register-version/", views.api_register_version, name="api_register_version"),
-    path("api/dataset/images/", views.api_dataset_images, name="api_dataset_images"),
 
-    # ── Training ────────────────────────────────────────────────────────
-    path("api/training/start/", views.api_training_start, name="api_training_start"),
-    path("api/training/status/", views.api_training_status, name="api_training_status"),
-    path("api/training/history/", views.api_training_history, name="api_training_history"),
-    path("api/training/promote/", views.api_training_promote, name="api_training_promote"),
 
     # ── Raspberry Pi Inference (Simple, reuses existing classify logic) ──
     path("api/pi/health/", api_pi_health, name="api_pi_health"),
@@ -77,8 +62,7 @@ urlpatterns = [
     # ── Local Sync Triggers (for UI Buttons) ──────────────────────────
     path("api/local/sync/push/", local_sync.api_local_trigger_push, name="local_sync_push"),
     path("api/local/sync/pull/", local_sync.api_local_trigger_pull, name="local_sync_pull"),
-    path("api/local/sync/push-model/<str:version_tag>/", local_sync.api_local_push_model, name="local_sync_push_model"),
-    path("api/local/sync/push-model/", local_sync.api_local_push_model, name="local_sync_push_active_model"),
+
     path("api/local/sync/fetch-model/", local_sync.api_local_fetch_model, name="local_sync_fetch_model"),
     path("api/local/sync/activate-model/<str:version_tag>/", local_sync.api_local_activate_model, name="local_sync_activate_model"),
     path("api/local/models/", local_sync.api_local_list_models, name="local_list_models"),

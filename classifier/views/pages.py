@@ -76,9 +76,3 @@ def dataset_view(request):
     return render(request, "classifier/dataset.html", _page_context("dataset"))
 
 
-@login_required
-@master_required
-@require_GET
-def training_view(request):
-    """Render the training management page."""
-    return render(request, "classifier/training.html", _page_context("training"))

@@ -47,9 +47,15 @@ ALLOWED_CONTENT_TYPES = frozenset({
 
 def get_all_class_names() -> List[str]:
     """Return a unique merged list of classes from model and database."""
-    from classifier.models import DatasetClass
+    from classifier.models import Image
 
-    db_classes = set(DatasetClass.objects.values_list("name", flat=True))
+    # Get operator-assigned labels from images
+    db_classes = set(
+        Image.objects.exclude(assigned_label__isnull=True)
+        .exclude(assigned_label='')
+        .values_list("assigned_label", flat=True)
+        .distinct()
+    )
     model_classes = set(MODEL_CLASS_NAMES)
     
     # Merge and sort, keeping 'OOD' or 'Anomaly' at the end if desired, 

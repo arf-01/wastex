@@ -41,40 +41,6 @@ def api_local_trigger_pull(request):
         logger.exception("Local sync pull failed")
         return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
-@require_POST
-def api_local_push_model(request, version_tag=None):
-    """[MASTER ROLE] Push a specific model (or the active model) to the Cloud Broker."""
-    if settings.SITE_ROLE != 'MASTER':
-        return JsonResponse({"error": "This action is only available on MASTER nodes."}, status=403)
-    
-    try:
-        # If no version_tag provided, find the active model
-        if not version_tag:
-            from classifier.models import TrainingRun
-            active_run = TrainingRun.objects.filter(is_active_model=True, status='completed').first()
-            if not active_run:
-                return JsonResponse({"error": "No active trained model to push."}, status=404)
-            version_tag = active_run.run_name
-
-        # Instantiate the sync command and call its push_model_to_cloud directly
-        from classifier.management.commands.sync_to_cloud import Command as SyncCommand
-        from django.core.management.color import no_style
-        
-        cmd = SyncCommand()
-        cmd.stdout = __import__('io').StringIO()  # Capture output
-        cmd.style = no_style()                    # Avoid ANSI in captured output
-        cmd.push_model_to_cloud(version_tag)
-        
-        output = cmd.stdout.getvalue()
-        if 'Error' in output or 'failed' in output.lower():
-            return JsonResponse({"status": "error", "message": output.strip()}, status=500)
-        
-        return JsonResponse({"status": "success", "message": f"Model {version_tag} pushed to cloud successfully."})
-    except Exception as e:
-        logger.exception(f"Failed to push model {version_tag}")
-        return JsonResponse({"error": str(e)}, status=500)
-
 import os
 import shutil
 from pathlib import Path

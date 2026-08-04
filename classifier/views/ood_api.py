@@ -16,7 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q
 
-from classifier.models import DatasetClass, Image
+from classifier.models import Image
 from classifier.decorators import edge_required
 
 from .helpers import parse_json_body, safe_positive_int
@@ -149,8 +149,7 @@ def api_review_image(request, image_id: int):
 def api_label_image(request, image_id: int):
     """Assign a class label to an OOD image.
 
-    If the label is new (not yet in ``DatasetClass``), a record is
-    created automatically so the canonical class list grows over time.
+    If the label is new, it will only exist on this Image record.
 
     Request body (JSON):
         label : str — the class label to assign (required, non-empty).
@@ -166,7 +165,6 @@ def api_label_image(request, image_id: int):
     if not label:
         return JsonResponse({"error": "Label is required."}, status=400)
 
-    DatasetClass.objects.get_or_create(name=label)
 
     img.assigned_label = label
     img.reviewed = True
